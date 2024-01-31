@@ -1,8 +1,7 @@
-import { ConfigProvider, Layout, Space, Switch, Typography, theme } from "antd";
+import { ConfigProvider, Layout, Switch, theme } from "antd";
 import "./App.css";
 import { useState } from "react";
 import { Content, Footer, Header } from "antd/es/layout/layout";
-import TargetTimePace from "./components/TargetTimePace";
 import PlayListManager from "./components/PlayListManager";
 
 function App() {

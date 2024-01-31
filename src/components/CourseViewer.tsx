@@ -1,0 +1,123 @@
+import React, { useRef, useState } from "react";
+import { UploadOutlined } from "@ant-design/icons";
+import { Card } from "antd";
+//import GpxParser from "gpxparser";
+
+import { ElevationGraph } from "./ElevationGraph";
+
+import GpxParser from "gpx-parser-ts";
+import { getPointDetails } from "../utils/gpxUtils";
+
+interface CourseViewerProps {
+  onFileDrop: (file: File) => void;
+}
+
+const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+
+    const file = event.dataTransfer.files[0];
+    if (file.name.endsWith(".gpx")) {
+      console.log(file);
+      //const gpx = new GpxParser();
+
+      const parser: GpxParser = new GpxParser();
+
+      const contents = await file.text();
+      let gpx = await parser.parse(contents);
+      console.log(gpx);
+      console.log(
+        parser.calculateTotalDistanceForPoints(gpx.trk[0].trkseg.trkpt)
+      );
+      console.log(parser.calculateElevationData(gpx.trk[0].trkseg.trkpt));
+
+      const x = getPointDetails(
+        gpx.trk[0].trkseg.trkpt.map((p) => [p.lon, p.lat, p.ele])
+      );
+
+      console.log(x);
+
+      const geoJson = parser.toGeoJSON(gpx);
+      console.log(geoJson);
+      // file.text().then(async (value) => {
+      //   //gpx = parseGpxFile(value);
+      //   let gpx = await parser.parse(value);
+      //   console.log("Done");
+      // }); //gpx.parse(value));
+
+      if (onFileDrop) onFileDrop(file);
+    } else {
+      console.log("Invalid file type. Only .gpx files are allowed.");
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files === null) return;
+    const file = event.target.files[0];
+    console.log(file);
+    if (onFileDrop) onFileDrop(file);
+
+    console.log(file.text());
+  };
+
+  return (
+    <>
+      <div
+        style={{ width: "100%" }}
+        className={`course-viewer ${isDragging ? "dragging" : ""}`}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={handleClick}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+          accept=".gpx"
+          multiple={false}
+        />
+        <Card hoverable>
+          <p className="ant-upload-drag-icon">
+            <UploadOutlined style={{ fontSize: "2rem", color: "#08c" }} />
+          </p>
+          <p className="ant-upload-text">
+            Click or drag your course GPX file in to this area.
+          </p>
+          <p className="ant-upload-hint">
+            Files are not sent to the server, they are processed locally in your
+            browser
+          </p>
+        </Card>
+      </div>
+
+      <Card style={{ width: "100%", height: "200px" }}>
+        <ElevationGraph />
+      </Card>
+    </>
+  );
+};
+
+export default CourseViewer;

@@ -11,6 +11,10 @@
   },
   "dependencies": {
     "antd": "^5.13.2",
+    "events": "^3.3.0",
+    "gpx-parser-ts": "^1.0.7",
+    "gpxparser": "^3.0.8",
+    "map.heightgraph": "^0.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
