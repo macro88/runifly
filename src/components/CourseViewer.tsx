@@ -5,12 +5,13 @@ import { Card } from "antd";
 
 import { ElevationGraph } from "./ElevationGraph";
 
-import GpxParser from "gpx-parser-ts";
-import { getPointDetails } from "../utils/gpxUtils";
+import { createFakeGpx, parseFile } from "../utils/gpxUtils";
 
 interface CourseViewerProps {
   onFileDrop: (file: File) => void;
 }
+
+console.log(createFakeGpx("test", 21.1, 5.5));
 
 const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -38,32 +39,8 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
 
     const file = event.dataTransfer.files[0];
     if (file.name.endsWith(".gpx")) {
-      console.log(file);
-      //const gpx = new GpxParser();
-
-      const parser: GpxParser = new GpxParser();
-
-      const contents = await file.text();
-      let gpx = await parser.parse(contents);
-      console.log(gpx);
-      console.log(
-        parser.calculateTotalDistanceForPoints(gpx.trk[0].trkseg.trkpt)
-      );
-      console.log(parser.calculateElevationData(gpx.trk[0].trkseg.trkpt));
-
-      const x = getPointDetails(
-        gpx.trk[0].trkseg.trkpt.map((p) => [p.lon, p.lat, p.ele])
-      );
-
+      const x = await parseFile(file);
       console.log(x);
-
-      const geoJson = parser.toGeoJSON(gpx);
-      console.log(geoJson);
-      // file.text().then(async (value) => {
-      //   //gpx = parseGpxFile(value);
-      //   let gpx = await parser.parse(value);
-      //   console.log("Done");
-      // }); //gpx.parse(value));
 
       if (onFileDrop) onFileDrop(file);
     } else {

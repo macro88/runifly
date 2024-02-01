@@ -1,29 +1,21 @@
-import GpxParser from "gpxparser";
-
-export type GpxInfo = {
-  name: string;
-  distance: {
-    total: number;
-  };
-  points: LatLonEle[];
-  sizeBytes: number;
-};
-
-type LatLonBase = {
-  lat: number;
-  lon: number;
-};
-
-// Matches any type that has LatLonBase as a subset, plus elevation
-export interface LatLonEle extends Required<LatLonBase> {
-  ele: number;
-}
+import GpxParser from "gpx-parser-ts";
 
 export type GeoJsonPoint = [number, number, number];
+export type Gpx = {
+  name: string;
+  points: PointDetail[];
+};
 
-export function toGeoJson(point: LatLonEle): GeoJsonPoint {
-  return [point.lon, point.lat, point.ele];
-}
+export type PointDetail = {
+  longitude: number;
+  latitude: number;
+  elevation: number;
+  distance: number;
+  totalDistance: number;
+  elevationGain: number;
+  elevationLoss: number;
+  time: number;
+};
 
 function calculateDistance(point1: GeoJsonPoint, point2: GeoJsonPoint): number {
   const [lon1, lat1, ele1] = point1;
@@ -49,10 +41,11 @@ function calculateDistance(point1: GeoJsonPoint, point2: GeoJsonPoint): number {
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
   const distance = earthRadius * c;
 
   // Calculate elevation difference
-  const eleDifference = ele2 - ele1;
+  const eleDifference = (ele2 - ele1) / 1000;
 
   // Calculate total distance including elevation
   const totalDistance = Math.sqrt(
@@ -62,8 +55,8 @@ function calculateDistance(point1: GeoJsonPoint, point2: GeoJsonPoint): number {
   return totalDistance;
 }
 
-export function getPointDetails(points: GeoJsonPoint[]): any[] {
-  const result: any[] = [];
+function getPointDetails(points: GeoJsonPoint[]): PointDetail[] {
+  const result: PointDetail[] = [];
 
   for (let i = 0; i < points.length; i++) {
     const [lon, lat, ele] = points[i];
@@ -86,32 +79,66 @@ export function getPointDetails(points: GeoJsonPoint[]): any[] {
   return result;
 }
 
-export default function parseGpxFile(gpxContents: string): GpxInfo {
-  const gpx = new GpxParser();
-  gpx.parse(gpxContents);
+export function createFakeGpx(
+  name: string,
+  distance: number,
+  pace: number
+): Gpx {
+  const distanceInt = Math.floor(distance);
+  const distanceFraction = distance - distanceInt;
 
-  const name = gpx.tracks[0].name;
-  const points = gpx.tracks[0].points;
-
-  const distance = {
-    total: points.slice(1).reduce(
-      (acc, cur, idx) => acc, //+ turf.distance(toGeoJson(cur), toGeoJson(points[idx])),
-      0
-    ),
-  };
-  // If any point does not have ele key, then add ele: 0
-  for (const point of points) {
-    if (point.ele == null) {
-      point.ele = 0;
+  const points: PointDetail[] = Array.from(
+    { length: distanceInt },
+    (_, idx) => {
+      const i = idx + 1;
+      return {
+        longitude: i,
+        latitude: i,
+        elevation: i,
+        distance: i,
+        totalDistance: i,
+        elevationGain: i,
+        elevationLoss: i,
+        time: i * pace,
+      };
     }
+  );
+
+  if (distanceFraction > 0) {
+    points[points.length - 1].distance += distanceFraction;
+    points[points.length - 1].time += pace * distanceFraction;
   }
 
-  const pointDetails = getPointDetails(points.map(toGeoJson));
-
   return {
-    distance,
-    points: pointDetails,
-    name,
-    sizeBytes: gpxContents.length,
+    name: name,
+    points: points,
   };
+}
+
+function toTime(mins: number) {
+  // Convert it to seconds
+  let totalSeconds = mins * 60;
+
+  // Calculate hours, minutes and seconds
+  const hours = Math.floor(totalSeconds / 3600);
+  totalSeconds %= 3600;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+
+  return { hours, minutes, seconds };
+}
+
+export async function parseFile(file: File): any {
+  const parser: GpxParser = new GpxParser();
+
+  const contents = await file.text();
+  let gpx = await parser.parse(contents);
+  console.log(gpx);
+  console.log(parser.calculateTotalDistanceForPoints(gpx.trk[0].trkseg.trkpt));
+  console.log(parser.calculateElevationData(gpx.trk[0].trkseg.trkpt));
+
+  const x = getPointDetails(
+    gpx.trk[0].trkseg.trkpt.map((p) => [p.lon, p.lat, p.ele])
+  );
+  return x;
 }
