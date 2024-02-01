@@ -11,12 +11,10 @@ interface CourseViewerProps {
   onFileDrop: (file: File) => void;
 }
 
-console.log(createFakeGpx("test", 21.1, 5.5));
-
 const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [gpx, setGpx] = useState(createFakeGpx("no name", 21.1, 5.5));
   const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(true);
@@ -39,8 +37,8 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
 
     const file = event.dataTransfer.files[0];
     if (file.name.endsWith(".gpx")) {
-      const x = await parseFile(file);
-      console.log(x);
+      const loadedGpx = await parseFile(file);
+      setGpx(loadedGpx);
 
       if (onFileDrop) onFileDrop(file);
     } else {
@@ -91,7 +89,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
       </div>
 
       <Card style={{ width: "100%", height: "200px" }}>
-        <ElevationGraph />
+        <ElevationGraph gpx={gpx} />
       </Card>
     </>
   );
