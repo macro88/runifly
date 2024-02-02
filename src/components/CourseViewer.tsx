@@ -1,28 +1,27 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { UploadOutlined } from "@ant-design/icons";
 import { Card } from "antd";
 //import GpxParser from "gpxparser";
 
 import { ElevationGraph } from "./ElevationGraph";
 
-import { createFakeGpx, parseFile } from "../utils/gpxUtils";
+import { createFakeGpx, parseFile, totalDistance } from "../utils/gpxUtils";
+import { useCourseContext } from "../data/CourseContext";
 
 interface CourseViewerProps {
   onFileDrop: (file: File) => void;
-  distance: number;
-  pace: number;
-  name: string;
 }
 
-const CourseViewer: React.FC<CourseViewerProps> = ({
-  onFileDrop,
-  name,
-  distance,
-  pace,
-}) => {
+const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { name, distance, pace, setDistance } = useCourseContext();
   const [gpx, setGpx] = useState(createFakeGpx(name, distance, pace));
+
+  useEffect(() => {
+    if (!gpx) setGpx(createFakeGpx(name, distance, pace));
+  }, [name, distance, pace]);
+
   const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(true);
@@ -48,6 +47,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({
       const loadedGpx = await parseFile(file);
       setGpx(loadedGpx);
 
+      setDistance(Number((totalDistance(loadedGpx) / 1000).toFixed(2)));
       if (onFileDrop) onFileDrop(file);
     } else {
       console.log("Invalid file type. Only .gpx files are allowed.");

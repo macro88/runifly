@@ -31,6 +31,10 @@ export type Lap = {
 
 export const earthRadiusMeters = 6371008.8;
 
+export function totalDistance(gpx: Gpx): number {
+  return gpx.points[gpx.points.length - 1].totalDistance;
+}
+
 function calculateDistance(point1: GeoJsonPoint, point2: GeoJsonPoint): number {
   const [lon1, lat1, ele1] = point1;
   const [lon2, lat2, ele2] = point2;
@@ -256,7 +260,7 @@ export function createFakeGpx(
   }
 
   const laps = aggregateLaps(points);
-  console.log(laps);
+
   return {
     name: name,
     points: points,
