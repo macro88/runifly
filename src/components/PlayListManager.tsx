@@ -2,17 +2,14 @@ import { Col, Row, Space, Typography, Image } from "antd";
 import React, { useState } from "react";
 import TargetTimePace from "./TargetTimePace";
 import CourseViewer from "./CourseViewer";
+import { useCourseContext } from "../data/CourseContext";
 
 interface PlayListManagerProps {
   // Define your component props here
 }
 
 const PlayListManager: React.FC<PlayListManagerProps> = () => {
-  // Implement your component logic here
-
-  const [distance, setDistance] = useState(42.196);
-  const [pace, setPace] = useState(5.0);
-  const [name, setName] = useState("Runifly Man");
+  const { name, setName } = useCourseContext();
 
   return (
     <>
@@ -26,28 +23,19 @@ const PlayListManager: React.FC<PlayListManagerProps> = () => {
         </Col>
         <Col>
           <Space direction="vertical" align="start">
-            <Typography.Title editable level={1} style={{ margin: 0 }}>
-              Runifly Playlist
+            <Typography.Title
+              editable={{ onChange: setName, triggerType: ["text"] }}
+              level={1}
+              style={{ margin: 0 }}
+            >
+              {name}
             </Typography.Title>
-            <TargetTimePace
-              setDistance={setDistance}
-              setPace={setPace}
-              setName={setName}
-              distance={distance}
-              pace={pace}
-              name={name}
-            />
+            <TargetTimePace />
           </Space>
         </Col>
       </Row>
       <Row>
-        <CourseViewer
-          onFileDrop={() => {}}
-          distance={distance}
-          pace={pace}
-          name={name}
-          setDistance={setDistance}
-        />
+        <CourseViewer onFileDrop={() => {}} />
       </Row>
     </>
   );

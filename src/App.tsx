@@ -3,6 +3,7 @@ import "./App.css";
 import { useState } from "react";
 import { Content, Footer, Header } from "antd/es/layout/layout";
 import PlayListManager from "./components/PlayListManager";
+import { CourseProvider } from "./data/CourseContext";
 
 function App() {
   const [darkMode, setDarkMode] = useState(true);
@@ -64,7 +65,9 @@ function App() {
                 borderRadius: borderRadiusLG,
               }}
             >
-              <PlayListManager />
+              <CourseProvider>
+                <PlayListManager />
+              </CourseProvider>
             </div>
           </>
         </Content>
