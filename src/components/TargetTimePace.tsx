@@ -7,11 +7,21 @@ dayjs.extend(duration);
 
 type Duration = ReturnType<typeof dayjs.duration>;
 
-interface TargetTimePaceProps {}
+interface TargetTimePaceProps {
+  setDistance: (distance: number) => void;
+  setPace: (pace: number) => void;
+  setName: (name: string) => void;
+  distance: number;
+  pace: number;
+  name: string;
+}
 
-const TargetTimePace: React.FC<TargetTimePaceProps> = () => {
+const TargetTimePace: React.FC<TargetTimePaceProps> = ({
+  distance,
+  setDistance,
+}) => {
   const defaultPace = dayjs.duration(5.5 * 60, "seconds");
-  const [distance, setDistance] = useState(21.1);
+  //const [distance, setDistance] = useState(21.1);
   const [inputPace, setInputPace] = useState(defaultPace);
   const [inputTargetTime, setInputTargetTime] = useState(
     dayjs.duration(defaultPace.asSeconds() * distance * 1000)

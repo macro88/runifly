@@ -240,10 +240,10 @@ export function createFakeGpx(
         longitude: i,
         latitude: i,
         elevation: i % 2 == 0 ? 50 + i : 60 - i,
-        distance: 1,
-        totalDistance: i,
-        elevationGain: i,
-        elevationLoss: i,
+        distance: 1000,
+        totalDistance: i * 1000,
+        elevationGain: 0,
+        elevationLoss: 0,
         time: i * pace,
       };
     }
@@ -255,10 +255,12 @@ export function createFakeGpx(
     points[points.length - 1].time += pace * distanceFraction;
   }
 
+  const laps = aggregateLaps(points);
+  console.log(laps);
   return {
     name: name,
     points: points,
-    laps: aggregateLaps(points),
+    laps,
   };
 }
 
@@ -336,10 +338,12 @@ export async function parseFile(file: File): Gpx {
     )
   );
 
+  const laps = aggregateLaps(points);
+
   const x = {
     name: gpx.trk[0].name,
     points,
-    laps: aggregateLaps(points),
+    laps: laps,
   };
   //console.log(gpx);
   //console.log(parser.toStreamJSON(gpx.trk[0].trkseg.trkpt));
@@ -389,6 +393,7 @@ export function aggregateLaps(points: PointDetail[]): Lap[] {
       totalDistance,
       elevationGain,
       elevationLoss,
+      elevations: [...elevations],
       time,
     });
   }
