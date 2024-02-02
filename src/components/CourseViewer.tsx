@@ -9,12 +9,20 @@ import { createFakeGpx, parseFile } from "../utils/gpxUtils";
 
 interface CourseViewerProps {
   onFileDrop: (file: File) => void;
+  distance: number;
+  pace: number;
+  name: string;
 }
 
-const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
+const CourseViewer: React.FC<CourseViewerProps> = ({
+  onFileDrop,
+  name,
+  distance,
+  pace,
+}) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [gpx, setGpx] = useState(createFakeGpx("no name", 21.1, 5.5));
+  const [gpx, setGpx] = useState(createFakeGpx(name, distance, pace));
   const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(true);

@@ -1,5 +1,5 @@
 import { Col, Row, Space, Typography, Image } from "antd";
-import React from "react";
+import React, { useState } from "react";
 import TargetTimePace from "./TargetTimePace";
 import CourseViewer from "./CourseViewer";
 
@@ -9,6 +9,10 @@ interface PlayListManagerProps {
 
 const PlayListManager: React.FC<PlayListManagerProps> = () => {
   // Implement your component logic here
+
+  const [distance, setDistance] = useState(42.196);
+  const [pace, setPace] = useState(5.0);
+  const [name, setName] = useState("Runifly Man");
 
   return (
     <>
@@ -25,12 +29,25 @@ const PlayListManager: React.FC<PlayListManagerProps> = () => {
             <Typography.Title editable level={1} style={{ margin: 0 }}>
               Runifly Playlist
             </Typography.Title>
-            <TargetTimePace />
+            <TargetTimePace
+              setDistance={setDistance}
+              setPace={setPace}
+              setName={setName}
+              distance={distance}
+              pace={pace}
+              name={name}
+            />
           </Space>
         </Col>
       </Row>
       <Row>
-        <CourseViewer onFileDrop={() => {}} />
+        <CourseViewer
+          onFileDrop={() => {}}
+          distance={distance}
+          pace={pace}
+          name={name}
+          setDistance={setDistance}
+        />
       </Row>
     </>
   );
