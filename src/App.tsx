@@ -1,9 +1,10 @@
-import { ConfigProvider, Layout, Switch, theme } from "antd";
+import { Avatar, ConfigProvider, Layout, Switch, theme } from "antd";
 import "./App.css";
 import { useState } from "react";
 import { Content, Footer, Header } from "antd/es/layout/layout";
 import PlayListManager from "./components/PlayListManager";
 import { CourseProvider } from "./data/CourseContext";
+import SpotifyUser from "./components/SpotifyUser";
 
 function App() {
   const [darkMode, setDarkMode] = useState(true);
@@ -41,6 +42,7 @@ function App() {
           }}
         >
           Runifly
+          <SpotifyUser />
           <Switch
             checked={darkMode}
             checkedChildren="Dark"
