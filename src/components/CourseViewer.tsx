@@ -1,11 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import { UploadOutlined } from "@ant-design/icons";
-import { Card } from "antd";
+import { Button, Card, Space } from "antd";
 //import GpxParser from "gpxparser";
 
 import { ElevationGraph } from "./ElevationGraph";
 
-import { createFakeGpx, parseFile, totalDistance } from "../utils/gpxUtils";
+import {
+  Gpx,
+  createFakeGpx,
+  parseFile,
+  totalDistance,
+} from "../utils/gpxUtils";
 import { useCourseContext } from "../data/CourseContext";
 
 interface CourseViewerProps {
@@ -15,8 +20,8 @@ interface CourseViewerProps {
 const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { name, distance, pace, setDistance } = useCourseContext();
-  const [gpx, setGpx] = useState(createFakeGpx(name, distance, pace));
+  const { name, distance, pace, gpx, setDistance, setName, setGpx } =
+    useCourseContext();
 
   useEffect(() => {
     if (!gpx) setGpx(createFakeGpx(name, distance, pace));
@@ -46,7 +51,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
     if (file.name.endsWith(".gpx")) {
       const loadedGpx = await parseFile(file);
       setGpx(loadedGpx);
-
+      setName(loadedGpx.name);
       setDistance(Number((totalDistance(loadedGpx) / 1000).toFixed(2)));
       if (onFileDrop) onFileDrop(file);
     } else {
@@ -59,47 +64,33 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
     const file = event.target.files[0];
     console.log(file);
     if (onFileDrop) onFileDrop(file);
-
-    console.log(file.text());
   };
 
   return (
-    <>
-      <div
-        style={{ width: "100%" }}
-        className={`course-viewer ${isDragging ? "dragging" : ""}`}
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={handleClick}
-      >
-        <input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: "none" }}
-          onChange={handleFileChange}
-          accept=".gpx"
-          multiple={false}
-        />
-        <Card hoverable>
-          <p className="ant-upload-drag-icon">
-            <UploadOutlined style={{ fontSize: "2rem", color: "#08c" }} />
-          </p>
-          <p className="ant-upload-text">
-            Click or drag your course GPX file in to this area.
-          </p>
-          <p className="ant-upload-hint">
-            Files are not sent to the server, they are processed locally in your
-            browser
-          </p>
-        </Card>
-      </div>
+    <div
+      className={`course-viewer ${isDragging ? "dragging" : ""}`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onClick={handleClick}
+      style={{ width: "100%", height: "200px" }}
+    >
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+        accept=".gpx"
+        multiple={false}
+      />
 
-      <Card style={{ width: "100%", height: "200px" }}>
-        <ElevationGraph gpx={gpx} />
-      </Card>
-    </>
+      {gpx && (
+        <Card>
+          <ElevationGraph gpx={gpx} />
+        </Card>
+      )}
+    </div>
   );
 };
 

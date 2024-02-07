@@ -3,7 +3,8 @@ import { GlobalToken, theme } from "antd";
 import * as d3 from "d3";
 import { Gpx } from "../utils/gpxUtils";
 const { useToken } = theme;
-
+import finishFlag from "../assets/finishFlag.svg";
+import { usePlaylistContext } from "../data/PlaylistContext";
 interface ElevationGraphProps {
   gpx: Gpx;
 }
@@ -15,14 +16,53 @@ const setupSvg = (svgRef) => {
     .attr("height", "100%")
     .style("overflow", "visible");
 };
+const margin = { top: 10, right: 0, bottom: 10, left: 10 };
 
 export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
   const { token } = useToken();
   const svgRef = useRef();
 
-  useEffect(() => {
-    const margin = { top: 10, right: 0, bottom: 10, left: 10 };
+  const { hoveredSong } = usePlaylistContext();
 
+  useEffect(() => {
+    if (svgRef.current) {
+      console.log(hoveredSong);
+      d3.select(svgRef.current).select(".hoveredSongRect").remove();
+
+      if (!hoveredSong) {
+        d3.select(svgRef.current).select(".hoveredSongRect").remove();
+      } else {
+        const svg = setupSvg(svgRef);
+        const width =
+          svg.node().getBoundingClientRect().width - margin.left - margin.right;
+        const height =
+          svg.node().getBoundingClientRect().height -
+          margin.top -
+          margin.bottom;
+
+        const xScale = d3
+          .scaleLinear()
+          .domain([0, gpx.laps.length])
+          .range([0, width]);
+
+        d3.select(svgRef.current)
+          .append("rect")
+          .attr("class", "hoveredSongRect")
+          .attr("x", xScale(hoveredSong.lapFrom))
+          .attr("y", 10)
+          .attr(
+            "width",
+            xScale(hoveredSong.lapTo) -
+              xScale(hoveredSong.lapFrom) +
+              margin.left
+          )
+          .attr("height", height)
+          .attr("fill", "rgba(0, 0, 0, 0.5)");
+      }
+    }
+  }, [hoveredSong]);
+
+  useEffect(() => {
     const svg = setupSvg(svgRef);
     svg.selectAll("*").remove(); // This line removes all child elements of the SVG
 
@@ -42,7 +82,6 @@ export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
       }))
     );
 
-    console.log(data);
     const width =
       svg.node().getBoundingClientRect().width - margin.left - margin.right;
     const height =
@@ -60,8 +99,14 @@ export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
     const yScale = d3
       .scaleLinear()
       .domain([
-        d3.min(data, (d) => d.elevation),
-        d3.max(data, (d) => d.elevation),
+        Math.min(
+          0,
+          d3.min(data, (d) => d.elevation)
+        ),
+        Math.max(
+          100,
+          d3.max(data, (d) => d.elevation)
+        ),
       ])
       .range([height, 0]);
 
@@ -91,14 +136,7 @@ export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
     g.append("g").call(yAxis);
 
     addRunningMan(svg, svgRef, xScale, yScale, data, token);
-
-    d3.select(svgRef.current)
-      .append("rect")
-      .attr("x", xScale(1.5))
-      .attr("y", 10)
-      .attr("width", xScale(2.25) - xScale(1.5))
-      .attr("height", height)
-      .attr("fill", "rgba(0, 0, 0, 0.5)");
+    //addFinishFlag(svg, xScale, yScale, data);
   }, [gpx, token]);
 
   return <svg ref={svgRef} />;
@@ -150,4 +188,16 @@ function addRunningMan(svg, svgRef, xScale, yScale, data, token: GlobalToken) {
     .on("mouseout", () => {
       runningMan.style("display", "none");
     });
+}
+
+function addFinishFlag(svg, xScale, yScale, data) {
+  const lastDataPoint = data[data.length - 1];
+
+  svg
+    .append("image")
+    .attr("xlink:href", finishFlag)
+    .attr("x", xScale(lastDataPoint.lap))
+    .attr("y", yScale(lastDataPoint.elevation))
+    .attr("width", 20)
+    .attr("height", 40); // Adjust the height as needed
 }

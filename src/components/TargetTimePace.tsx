@@ -26,7 +26,9 @@ const TargetTimePace: React.FC<TargetTimePaceProps> = ({}) => {
 
   function calculatePace(time: Duration, distance: number): Duration {
     const totalSeconds = time.asSeconds();
+
     const paceInSecondsPerKm = totalSeconds / distance;
+
     return dayjs.duration(paceInSecondsPerKm, "seconds");
   }
 
@@ -53,7 +55,7 @@ const TargetTimePace: React.FC<TargetTimePaceProps> = ({}) => {
     setInputTargetTime(newTargetTime);
     const pace = calculatePace(newTargetTime, distance);
     setInputPace(pace);
-    setPace(pace.seconds());
+    setPace(pace.asSeconds());
   };
 
   const handlePaceChange = (time: dayjs.Dayjs | null) => {
@@ -63,7 +65,7 @@ const TargetTimePace: React.FC<TargetTimePaceProps> = ({}) => {
       "seconds"
     );
     setInputPace(newPace);
-    setPace(newPace.seconds());
+    setPace(newPace.asSeconds());
     const targetTime = calculateTargetTime(newPace, distance);
     setInputTargetTime(targetTime);
     setCalculatedTargetTime(targetTime);
@@ -72,7 +74,7 @@ const TargetTimePace: React.FC<TargetTimePaceProps> = ({}) => {
   useEffect(() => {
     const pace = calculatePace(inputTargetTime, distance);
     setInputPace(pace);
-    setPace(pace.seconds());
+    setPace(pace.asSeconds());
   }, [inputTargetTime, distance]);
 
   useEffect(() => {

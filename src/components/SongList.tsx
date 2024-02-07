@@ -10,27 +10,15 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import React, { useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Avatar, Layout, Space, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import Paragraph from "antd/es/typography/Paragraph";
 
-interface DataType {
-  key: string;
-  name: string;
-  artistName: string;
-  albumName: string;
-  almumArt: string;
-  songDuration: number;
-  raceTimeFrom: number;
-  raceTimeTo: number;
-  lapFrom: number;
-  lapTo: number;
-  address: string;
-  age: number;
-}
+import { usePlaylistContext } from "../data/PlaylistContext";
+import { RuniflySong, useRuniflyPlaylist } from "../hooks/useSpotifyPlaylist";
+import { useCourseContext } from "../data/CourseContext";
 
-const columns: ColumnsType<DataType> = [
+const columns: ColumnsType<RuniflySong> = [
   {
     key: "sort",
     width: 50,
@@ -45,7 +33,7 @@ const columns: ColumnsType<DataType> = [
     title: "Title",
     dataIndex: "name",
     ellipsis: true,
-    render: (name: string, record: DataType) => (
+    render: (name: string, record: RuniflySong) => (
       <Space>
         <Avatar shape="square" src={record.albumArt}></Avatar>
         <Space direction="vertical" size="compact">
@@ -63,31 +51,43 @@ const columns: ColumnsType<DataType> = [
   {
     title: "Song Time",
     dataIndex: "songDuration", //ms
-    render: (songDuration: number) => formatTimeFromMilliseconds(songDuration),
+    render: (songDuration: number) => formatTimeFromSeconds(songDuration),
     width: 100,
   },
   {
     title: "KM",
     dataIndex: "lapFrom",
-    render: (lapFrom: number, record: DataType) => {
+    render: (lapFrom: number, record: RuniflySong) => {
       return lapFrom + " - " + record.lapTo;
     },
     width: 130,
   },
   {
     title: "Race Time",
-    render: (songDuration: number) => formatTimeFromSeconds(songDuration),
-    width: 100,
+
+    render: (record: RuniflySong) =>
+      `${formatTimeFromSeconds(record.raceTimeFrom)} - ${formatTimeFromSeconds(
+        record.raceTimeTo
+      )}`,
+    width: 120,
   },
 ];
 
 function formatTimeFromSeconds(seconds: number) {
-  if (seconds === 0) return "0:00:00";
-  const time = dayjs.duration(seconds);
-  const hours = String(time.hours()).padStart(2, "0");
-  const minutes = String(time.minutes()).padStart(2, "0");
-  const secs = String(time.seconds()).padStart(2, "0");
-  return `${hours}:${minutes}:${secs}`;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+
+  let timeString = "";
+
+  if (hours > 0) {
+    timeString += `${hours}:`;
+  }
+
+  timeString += `${minutes.toString()}:`;
+  timeString += `${Math.round(remainingSeconds).toString().padStart(2, "0")}`;
+
+  return timeString;
 }
 function formatTimeFromMilliseconds(ms: number) {
   return formatTimeFromSeconds(ms / 1000);
@@ -138,67 +138,81 @@ const Row = ({ children, ...props }: RowProps) => {
 };
 
 const SongList: React.FC = () => {
-  const [dataSource, setDataSource] = useState([
-    {
-      key: "1",
-      name: "Seven Nation Army",
-      artistName: "The White Stripes",
-      songDuration: 232106,
-      albumName: "Elephant",
-      albumArt:
-        "https://i.scdn.co/image/ab67616d00004851a69f71a8794e2d867a52f98f",
-      raceTimeFrom: 600,
-      raceTimeTo: 660,
-      lapFrom: 195.5,
-      lapTo: 122.5,
-    },
-    {
-      key: "3232",
-      name: "Seven Nation Army 2",
-      artistName: "The White Stripes 2",
-      songDuration: 232106,
-      albumName: "Elephant 2",
-      albumArt:
-        "https://i.scdn.co/image/ab67616d00004851a69f71a8794e2d867a52f98f",
-      raceTimeFrom: 600,
-      raceTimeTo: 660,
-      lapFrom: 195.5,
-      lapTo: 122.5,
-    },
-  ]);
+  const {
+    playlistKey,
+    sethoveredSong,
+    hoveredSong,
+    setsyncRequired,
+    songs,
+    setSongs,
+    loading,
+    updateSongOrder,
+  } = usePlaylistContext();
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (active.id !== over?.id) {
-      setDataSource((previous) => {
-        const activeIndex = previous.findIndex((i) => i.key === active.id);
-        const overIndex = previous.findIndex((i) => i.key === over?.id);
-        return arrayMove(previous, activeIndex, overIndex);
-      });
+      const activeIndex = songs.findIndex((i) => i.key === active.id);
+      const overIndex = songs.findIndex((i) => i.key === over?.id);
+      const newSongs = arrayMove(songs, activeIndex, overIndex);
+
+      updateSongOrder(newSongs);
+
+      // (previous) => {
+      //   const activeIndex = previous.findIndex((i) => i.key === active.id);
+      //   const overIndex = previous.findIndex((i) => i.key === over?.id);
+      //   return arrayMove(previous, activeIndex, overIndex);
+      // }
     }
   };
 
+  const [tableHeight, setTableHeight] = useState(400);
+  // ref is the Table ref.
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const node = tableRef.current;
+    const { top } = node.getBoundingClientRect();
+
+    // normally TABLE_HEADER_HEIGHT would be 55.
+    setTableHeight(window.innerHeight - top - 65);
+  }, [songs]);
+
   return (
-    <DndContext modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
-      <SortableContext
-        // rowKey array
-        items={dataSource.map((i) => i.key)}
-        strategy={verticalListSortingStrategy}
-      >
-        <Table
-          components={{
-            body: {
-              row: Row,
-            },
-          }}
-          rowKey="key"
-          columns={columns}
-          dataSource={dataSource}
-          //scroll={{ y: 200 }}
-          //sticky={true}
-          pagination={false}
-        />
-      </SortableContext>
-    </DndContext>
+    <div ref={tableRef}>
+      <DndContext modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
+        <SortableContext
+          // rowKey array
+          items={songs.map((i) => i.key)}
+          strategy={verticalListSortingStrategy}
+        >
+          <Table
+            components={{
+              body: {
+                row: Row,
+              },
+            }}
+            onRow={(record: RuniflySong) => {
+              return {
+                onMouseEnter: () => {
+                  sethoveredSong(record);
+                },
+                onMouseLeave: () => {
+                  sethoveredSong(undefined);
+                },
+              };
+            }}
+            rowKey="key"
+            columns={columns}
+            dataSource={songs}
+            loading={loading}
+            scroll={{ y: tableHeight }}
+            sticky={true}
+            pagination={false}
+            size="small"
+          />
+        </SortableContext>
+      </DndContext>
+    </div>
   );
 };
 
