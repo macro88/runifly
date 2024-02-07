@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useSpotify } from "../hooks/useSpotify";
 import { Scopes, UserProfile } from "@spotify/web-api-ts-sdk";
 import { Avatar } from "antd";
+import { UserOutlined } from "@ant-design/icons";
 
 const SpotifyUser = () => {
   const sdk = useSpotify(
@@ -22,8 +23,9 @@ const SpotifyUser = () => {
   return (
     <Avatar
       shape="square"
+      icon={profileData?.images.length ? undefined : <UserOutlined />}
       src={profileData?.images.length ? profileData?.images[0]?.url : undefined}
-      size={{ xs: 24, sm: 32, md: 40, lg: 64, xl: 80, xxl: 100 }}
+      title={profileData?.display_name}
     >
       {profileData?.display_name}
     </Avatar>
