@@ -199,6 +199,8 @@ const SongList: React.FC = () => {
                 onMouseLeave: () => {
                   sethoveredSong(undefined);
                 },
+                className:
+                  record.key === hoveredSong?.key ? "ant-table-row-hover" : "",
               };
             }}
             rowKey="key"
