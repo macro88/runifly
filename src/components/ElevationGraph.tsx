@@ -22,11 +22,10 @@ export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
   const { token } = useToken();
   const svgRef = useRef();
 
-  const { hoveredSong } = usePlaylistContext();
+  const { hoveredSong, songs, sethoveredSong } = usePlaylistContext();
 
   useEffect(() => {
     if (svgRef.current) {
-      console.log(hoveredSong);
       d3.select(svgRef.current).select(".hoveredSongRect").remove();
 
       if (!hoveredSong) {
@@ -60,6 +59,63 @@ export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
           .attr("fill", "rgba(0, 0, 0, 0.5)");
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const svg = setupSvg(svgRef);
+    const width =
+      svg.node().getBoundingClientRect().width - margin.left - margin.right;
+    const height =
+      svg.node().getBoundingClientRect().height - margin.top - margin.bottom;
+    const xScale = d3
+      .scaleLinear()
+      .domain([0, gpx.laps.length])
+      .range([0, width]);
+
+    if (!hoveredSong) {
+      // Hide the rectangle when the mouse is not over the graph
+      d3.select(svgRef.current).select(".hoveredSongRect").attr("width", 0);
+
+      // Hide the callout when the mouse is not over the graph
+      d3.select(svgRef.current)
+        .select(".hoveredCallout")
+        .style("display", "none");
+
+      return;
+    }
+
+    // Hide the rectangle when the mouse is not over the graph
+    d3.select(svgRef.current).select(".hoveredSongRect").remove();
+    // Hide the callout when the mouse is not over the graph
+    d3.select(svgRef.current).select(".hoveredCallout").remove();
+
+    const songRect = svg.append("rect").attr("class", "hoveredSongRect");
+    const callout = svg.append("foreignObject").attr("class", "hoveredCallout");
+    songRect
+      //.transition()
+      //.duration(200) // Adjust as needed
+      .attr("x", xScale(hoveredSong.lapFrom))
+      .attr("y", 10) // Adjust as needed
+      .attr("width", xScale(hoveredSong.lapTo) - xScale(hoveredSong.lapFrom))
+      .attr("height", height) // Adjust as needed
+      .attr("fill", "rgba(0, 0, 0, 0.5)"); // Adjust as needed
+
+    callout
+      .attr("x", xScale(hoveredSong.lapTo) + 10)
+      .attr("y", 10) // Adjust as needed
+      .attr("width", 200) // Adjust as needed
+      .attr("height", 50) // Adjust as needed
+      .html(
+        `
+              <div style="display: flex; align-items: center; width='100%' ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 512 512">
+                  <path fill="${token.colorPrimary}" d="M256 80C149.9 80 62.4 159.4 49.6 262c9.4-3.8 19.6-6 30.4-6c26.5 0 48 21.5 48 48V432c0 26.5-21.5 48-48 48c-44.2 0-80-35.8-80-80V384 336 288C0 146.6 114.6 32 256 32s256 114.6 256 256v48 48 16c0 44.2-35.8 80-80 80c-26.5 0-48-21.5-48-48V304c0-26.5 21.5-48 48-48c10.8 0 21 2.1 30.4 6C449.6 159.4 362.1 80 256 80z"/>
+                </svg>
+                <span style="margin-left: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%">${hoveredSong.name}</span>
+              </div>
+            `
+      )
+      .style("display", null);
   }, [hoveredSong]);
 
   useEffect(() => {
@@ -135,14 +191,36 @@ export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
     g.append("g").call(xAxis).attr("transform", `translate(0,${height})`);
     g.append("g").call(yAxis);
 
-    addRunningMan(svg, svgRef, xScale, yScale, data, token);
     //addFinishFlag(svg, xScale, yScale, data);
+    addRunningMan(
+      svg,
+      svgRef,
+      xScale,
+      yScale,
+      data,
+      token,
+      songs,
+      height,
+      hoveredSong,
+      sethoveredSong
+    );
   }, [gpx, token]);
 
   return <svg ref={svgRef} />;
 };
 
-function addRunningMan(svg, svgRef, xScale, yScale, data, token: GlobalToken) {
+function addRunningMan(
+  svg,
+  svgRef,
+  xScale,
+  yScale,
+  data,
+  token: GlobalToken,
+  songs,
+  height,
+  hoveredSong,
+  sethoveredSong
+) {
   // Create an SVG element for the running man
   const runningMan = svg
     .append("svg")
@@ -163,6 +241,7 @@ function addRunningMan(svg, svgRef, xScale, yScale, data, token: GlobalToken) {
 
   `);
 
+  const runningManOn = false;
   svg
     .on("mousemove", (event) => {
       // Calculate the mouse x position
@@ -179,25 +258,38 @@ function addRunningMan(svg, svgRef, xScale, yScale, data, token: GlobalToken) {
         }
       }
 
-      // Update the position of the running man
-      runningMan
-        .attr("x", xScale(closestDataPoint.lap) + 0) // Adjust the offset as needed
-        .attr("y", yScale(closestDataPoint.elevation) - 24) // Adjust the offset as needed
-        .style("display", null);
+      // Find the song that the mouse is over
+      let newSong = null;
+      for (const song of songs) {
+        if (xScale(song.lapFrom) <= mouseX && mouseX <= xScale(song.lapTo)) {
+          newSong = song;
+          break;
+        }
+      }
+
+      // If the mouse is over a new song, update the rectangle's position and size
+      if (newSong !== hoveredSong) {
+        if (!newSong) {
+          sethoveredSong(newSong);
+        }
+        //currentSong = newSong;
+        sethoveredSong(newSong);
+      }
+
+      if (runningManOn) {
+        // Update the position of the running man
+        runningMan
+          .attr("x", xScale(closestDataPoint.lap) + 0) // Adjust the offset as needed
+          .attr("y", yScale(closestDataPoint.elevation) - 24) // Adjust the offset as needed
+          .style("display", null);
+      }
     })
     .on("mouseout", () => {
-      runningMan.style("display", "none");
+      if (runningManOn) {
+        runningMan.style("display", "none");
+      }
+
+      //currentSong = null;
+      sethoveredSong(null);
     });
-}
-
-function addFinishFlag(svg, xScale, yScale, data) {
-  const lastDataPoint = data[data.length - 1];
-
-  svg
-    .append("image")
-    .attr("xlink:href", finishFlag)
-    .attr("x", xScale(lastDataPoint.lap))
-    .attr("y", yScale(lastDataPoint.elevation))
-    .attr("width", 20)
-    .attr("height", 40); // Adjust the height as needed
 }
