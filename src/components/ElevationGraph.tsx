@@ -21,56 +21,11 @@ const margin = { top: 10, right: 0, bottom: 10, left: 10 };
 export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
   const { token } = useToken();
   const svgRef = useRef();
-
+  const [chartData, setChartData] = useState([]);
   const { hoveredSong, songs, sethoveredSong } = usePlaylistContext();
 
   useEffect(() => {
-    if (svgRef.current) {
-      d3.select(svgRef.current).select(".hoveredSongRect").remove();
-
-      if (!hoveredSong) {
-        d3.select(svgRef.current).select(".hoveredSongRect").remove();
-      } else {
-        const svg = setupSvg(svgRef);
-        const width =
-          svg.node().getBoundingClientRect().width - margin.left - margin.right;
-        const height =
-          svg.node().getBoundingClientRect().height -
-          margin.top -
-          margin.bottom;
-
-        const xScale = d3
-          .scaleLinear()
-          .domain([0, gpx.laps.length])
-          .range([0, width]);
-
-        d3.select(svgRef.current)
-          .append("rect")
-          .attr("class", "hoveredSongRect")
-          .attr("x", xScale(hoveredSong.lapFrom))
-          .attr("y", 10)
-          .attr(
-            "width",
-            xScale(hoveredSong.lapTo) -
-              xScale(hoveredSong.lapFrom) +
-              margin.left
-          )
-          .attr("height", height)
-          .attr("fill", "rgba(0, 0, 0, 0.5)");
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const svg = setupSvg(svgRef);
-    const width =
-      svg.node().getBoundingClientRect().width - margin.left - margin.right;
-    const height =
-      svg.node().getBoundingClientRect().height - margin.top - margin.bottom;
-    const xScale = d3
-      .scaleLinear()
-      .domain([0, gpx.laps.length])
-      .range([0, width]);
+    const { svg, xScale, height } = getChart(svgRef, gpx, chartData);
 
     if (!hoveredSong) {
       // Hide the rectangle when the mouse is not over the graph
@@ -92,8 +47,6 @@ export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
     const songRect = svg.append("rect").attr("class", "hoveredSongRect");
     const callout = svg.append("foreignObject").attr("class", "hoveredCallout");
     songRect
-      //.transition()
-      //.duration(200) // Adjust as needed
       .attr("x", xScale(hoveredSong.lapFrom))
       .attr("y", 10) // Adjust as needed
       .attr("width", xScale(hoveredSong.lapTo) - xScale(hoveredSong.lapFrom))
@@ -119,52 +72,65 @@ export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
   }, [hoveredSong]);
 
   useEffect(() => {
-    const svg = setupSvg(svgRef);
-    svg.selectAll("*").remove(); // This line removes all child elements of the SVG
+    const { svg, xScale } = getChart(svgRef, gpx, chartData);
 
-    //    const data = gpx.points.map((p) => p.elevation);
+    svg
+      .on("mousemove", (event) => {
+        // Calculate the mouse x position
+        const mouseX = d3.pointer(event, svgRef.current)[0];
 
-    // Calculate the total number of elevation points across all laps
-    const totalPoints = gpx.laps.reduce(
-      (total, lap) => total + lap.elevations.length,
-      0
-    );
+        // Find the closest data point
+        let minDistance = Infinity;
+        let closestDataPoint = null;
+        for (const point of chartData) {
+          const distance = Math.abs(xScale(point.lap) - mouseX);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestDataPoint = point;
+          }
+        }
 
-    // Map each elevation point to its relative position within the total number of points
+        // Find the song that the mouse is over
+        let newSong = null;
+        for (const song of songs) {
+          if (xScale(song.lapFrom) <= mouseX && mouseX <= xScale(song.lapTo)) {
+            newSong = song;
+            break;
+          }
+        }
+
+        // If the mouse is over a new song, update the rectangle's position and size
+        if (newSong !== hoveredSong) {
+          if (!newSong) {
+            sethoveredSong(newSong);
+          }
+          //currentSong = newSong;
+          sethoveredSong(newSong);
+        }
+      })
+      .on("mouseout", () => {
+        sethoveredSong(null);
+      });
+  }, [chartData]);
+
+  useEffect(() => {
     const data = gpx.laps.flatMap((lap, index) =>
       lap.elevations.map((elevation, elIndex, elevationsArray) => ({
         lap: index + elIndex / elevationsArray.length,
         elevation,
       }))
     );
+    setChartData(data);
+  }, [gpx]);
 
-    const width =
-      svg.node().getBoundingClientRect().width - margin.left - margin.right;
-    const height =
-      svg.node().getBoundingClientRect().height - margin.top - margin.bottom;
+  useEffect(() => {
+    const { svg, xScale, height, yScale } = getChart(svgRef, gpx, chartData);
+
+    svg.selectAll("*").remove(); // This line removes all child elements of the SVG
 
     const g = svg
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    const xScale = d3
-      .scaleLinear()
-      .domain([0, gpx.laps.length])
-      .range([0, width]);
-
-    const yScale = d3
-      .scaleLinear()
-      .domain([
-        Math.min(
-          0,
-          d3.min(data, (d) => d.elevation)
-        ),
-        Math.max(
-          100,
-          d3.max(data, (d) => d.elevation)
-        ),
-      ])
-      .range([height, 0]);
 
     const generateScaledArea = d3
       .area()
@@ -174,7 +140,7 @@ export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
       .curve(d3.curveCardinal);
 
     g.append("path")
-      .datum(data)
+      .datum(chartData)
       .attr("stroke", token.colorPrimary)
       .attr("stroke-width", 2)
       .attr("fill", token.colorPrimary + "50")
@@ -192,22 +158,52 @@ export const ElevationGraph: React.FC<ElevationGraphProps> = ({ gpx }) => {
     g.append("g").call(yAxis);
 
     //addFinishFlag(svg, xScale, yScale, data);
-    addRunningMan(
-      svg,
-      svgRef,
-      xScale,
-      yScale,
-      data,
-      token,
-      songs,
-      height,
-      hoveredSong,
-      sethoveredSong
-    );
-  }, [gpx, token]);
+    // addRunningMan(
+    //   svg,
+    //   svgRef,
+    //   xScale,
+    //   yScale,
+    //   data,
+    //   token,
+    //   songs,
+    //   height,
+    //   hoveredSong,
+    //   sethoveredSong
+    // );
+  }, [chartData]);
 
   return <svg ref={svgRef} />;
 };
+
+function getChart(svgRef, gpx: Gpx, chartData: never[]) {
+  const svg = setupSvg(svgRef);
+
+  // Map each elevation point to its relative position within the total number of points
+  const width =
+    svg.node().getBoundingClientRect().width - margin.left - margin.right;
+  const height =
+    svg.node().getBoundingClientRect().height - margin.top - margin.bottom;
+
+  const xScale = d3
+    .scaleLinear()
+    .domain([0, gpx.laps.length])
+    .range([0, width]);
+
+  const yScale = d3
+    .scaleLinear()
+    .domain([
+      Math.min(
+        0,
+        d3.min(chartData, (d) => d.elevation)
+      ),
+      Math.max(
+        100,
+        d3.max(chartData, (d) => d.elevation)
+      ),
+    ])
+    .range([height, 0]);
+  return { svg, xScale, height, yScale };
+}
 
 function addRunningMan(
   svg,
