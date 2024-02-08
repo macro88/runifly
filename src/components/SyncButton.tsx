@@ -6,19 +6,21 @@ import { usePlaylistContext } from "../data/PlaylistContext";
 
 const ResetButton: React.FC = () => {
   const { reset } = useCourseContext();
-  const { syncRequired } = usePlaylistContext();
+  const { syncRequired, sync, loading } = usePlaylistContext();
 
-  const handleSync = () => {};
+  const handleSync = () => {
+    sync();
+  };
 
   return (
     <Button
       type={syncRequired ? "primary" : "dashed"}
       shape="circle"
+      loading={loading}
       onClick={handleSync}
       title="Sync with Spotify"
-    >
-      <SyncOutlined />
-    </Button>
+      icon={<SyncOutlined />}
+    ></Button>
   );
 };
 

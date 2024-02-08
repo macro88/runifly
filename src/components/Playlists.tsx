@@ -18,6 +18,7 @@ interface DataType {
   description: string;
   image: string;
   songs: number;
+  snapshotId: string;
 }
 
 interface TableParams {
@@ -49,8 +50,13 @@ const columns: ColumnsType<DataType> = [
 const Playlists: React.FC = () => {
   const [dataSource, setDataSource] = useState([]);
   const [loading, setLoading] = useState(false);
-  const { playlistKey, setplaylistKey, setplaylistImage, setplaylistName } =
-    usePlaylistContext();
+  const {
+    playlistKey,
+    setplaylistKey,
+    setplaylistImage,
+    setplaylistName,
+    setsnapshotId,
+  } = usePlaylistContext();
   const { setName } = useCourseContext();
   const [tableParams, setTableParams] = useState<TableParams>({
     pagination: {
@@ -80,6 +86,7 @@ const Playlists: React.FC = () => {
           key: playlist.id,
           name: playlist.name,
           description: playlist.description,
+          snapshotId: playlist.snapshot_id,
           image:
             playlist.images && playlist.images.length
               ? playlist.images[0].url
@@ -137,6 +144,7 @@ const Playlists: React.FC = () => {
             setplaylistImage(record.image);
             setplaylistName(record.name);
             setplaylistKey(record.key);
+            setsnapshotId(record.snapshotId);
           },
         };
       }}

@@ -12,6 +12,9 @@ interface PlaylistContextType {
   playlistKey: string;
   setplaylistKey: (playlistKey: string) => void;
 
+  snapshotId: string;
+  setsnapshotId: (snapshotId: string) => void;
+
   playlistName: string;
   setplaylistName: (playlistName: string) => void;
 
@@ -22,13 +25,14 @@ interface PlaylistContextType {
   sethoveredSong: (songKey: RuniflySong) => void;
   reset: () => void;
 
+  loading: boolean;
+
   syncRequired: boolean;
   setsyncRequired: (syncRequired: boolean) => void;
-
   songs: RuniflySong[];
   setSongs: (songs: RuniflySong[]) => void;
 
-  updateSongOrder: (newSongs: RuniflySong[]) => void;
+  sync: () => void;
 }
 
 const defaultValues = {
@@ -46,7 +50,7 @@ interface PlaylistProviderProps {
 
 const updateTimingData = (songs: RuniflySong[], pace: number) => {
   let cumlTime = 0;
-  console.log("updating time data");
+
   songs.forEach((song) => {
     song.raceTimeFrom = parseFloat(cumlTime.toFixed(2));
     song.raceTimeTo = parseFloat((cumlTime + song.songDuration).toFixed(2));
@@ -62,16 +66,25 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   const [playlistKey, setplaylistKey] = useState<string>();
   const [playlistName, setplaylistName] = useState<string>();
   const [playlistImage, setplaylistImage] = useState<string>();
-
+  const [snapshotId, setsnapshotId] = useState<string>();
   const [hoveredSong, sethoveredSong] = useState<RuniflySong>();
   const [syncRequired, setsyncRequired] = useState<boolean>(false);
   const [songs, setSongs] = useState<RuniflySong[]>([]);
   const { pace, distance } = useCourseContext();
-  const { data, error, loading } = useRuniflyPlaylist(
+
+  const { data, error, loading, updateData } = useRuniflyPlaylist(
     playlistKey,
     pace,
-    distance
+    distance,
+    snapshotId
   );
+
+  const sync = async () => {
+    const snapshotId = await updateData(songs);
+    console.log("snapshotId", snapshotId);
+    setsnapshotId(snapshotId);
+    setsyncRequired(false);
+  };
 
   useEffect(() => {
     if (data) {
@@ -87,9 +100,11 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     }
   }, [songs]);
 
-  const updateSongOrder = (newSongs: RuniflySong[]) => {
-    console.log("updating song order");
-
+  const updateSongOrder = (
+    newSongs: RuniflySong[],
+    key: string,
+    newIndex: number
+  ) => {
     setsyncRequired(true);
     setSongs(newSongs);
     updateTimingData(newSongs, pace);
@@ -108,6 +123,7 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     playlistKey,
     hoveredSong,
     syncRequired,
+    snapshotId,
     playlistName,
     playlistImage,
     songs,
@@ -121,6 +137,8 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     updateSongOrder,
     setplaylistName,
     setplaylistImage,
+    setsnapshotId,
+    sync,
   };
 
   return (
