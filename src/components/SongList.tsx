@@ -153,9 +153,10 @@ const SongList: React.FC = () => {
     if (active.id !== over?.id) {
       const activeIndex = songs.findIndex((i) => i.key === active.id);
       const overIndex = songs.findIndex((i) => i.key === over?.id);
+
       const newSongs = arrayMove(songs, activeIndex, overIndex);
 
-      updateSongOrder(newSongs);
+      updateSongOrder(newSongs, active.id, overIndex);
 
       // (previous) => {
       //   const activeIndex = previous.findIndex((i) => i.key === active.id);

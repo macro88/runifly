@@ -1,9 +1,15 @@
 import { useState, useEffect } from "react";
 import { useSpotify } from "./useSpotify";
-import { Scopes, SimplifiedTrack, SpotifyApi } from "@spotify/web-api-ts-sdk";
+import {
+  Scopes,
+  SimplifiedTrack,
+  SnapshotReference,
+  SpotifyApi,
+} from "@spotify/web-api-ts-sdk";
 
 export interface RuniflySong {
   key: string;
+  originalIndex: number;
   name: string;
   artistName: string;
   albumName: string;
@@ -18,10 +24,11 @@ export interface RuniflySong {
 export function useRuniflyPlaylist(
   playlistKey: string,
   distance: number,
-  pace: number
+  pace: number,
+  snapShotId: string
 ) {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [data, setData] = useState<RuniflySong[]>([]);
   const [error, setError] = useState(null);
   const [spotifyData, setSpotifyData] = useState();
 
@@ -32,7 +39,6 @@ export function useRuniflyPlaylist(
   );
 
   const fetchData = async () => {
-    console.log(playlistKey);
     if (playlistKey === undefined) return;
     setLoading(true);
 
@@ -45,42 +51,123 @@ export function useRuniflyPlaylist(
     setLoading(false);
   };
 
+  async function updateData(newData: RuniflySong[]): string {
+    const originalPositions = new Map(
+      data.map((song, index) => [song.key, index])
+    );
+    const updatedPositions = newData.map((song) =>
+      originalPositions.get(song.key)
+    );
+
+    setLoading(true);
+    let response: SnapshotReference = undefined;
+
+    const itemsToMove = calculateMoves(
+      Array.from(originalPositions.values()),
+      updatedPositions
+    );
+
+    await Promise.all(
+      itemsToMove.map(async (songMove) => {
+        response = await sdk?.playlists.movePlaylistItems(
+          playlistKey,
+          songMove.originalIndex,
+          1,
+          songMove.insertBeforeIndex
+        );
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      })
+    );
+
+    setData(newData);
+    setLoading(false);
+    return response?.snapshot_id;
+  }
+
+  type ApiCall = {
+    originalIndex: number;
+    insertBeforeIndex: number;
+  };
+
+  //Todo: move this to a helper file
+  function findLIS(sequence: number[]): number[] {
+    const piles: number[] = [];
+    const predecessors: number[] = new Array(sequence.length);
+    const indexes: number[] = new Array(sequence.length + 1);
+    let length = 0;
+
+    for (let i = 0; i < sequence.length; i++) {
+      let low = 1;
+      let high = length;
+      while (low <= high) {
+        const mid = Math.ceil((low + high) / 2);
+        if (sequence[indexes[mid]] < sequence[i]) {
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+
+      const newLength = low;
+      predecessors[i] = indexes[newLength - 1];
+      indexes[newLength] = i;
+
+      if (newLength > length) {
+        length = newLength;
+      }
+    }
+
+    const lis: number[] = new Array(length);
+    let k = indexes[length];
+    for (let i = length - 1; i >= 0; i--) {
+      lis[i] = sequence[k];
+      k = predecessors[k];
+    }
+
+    return lis;
+  }
+
+  //Todo: move this to a helper file
+  function calculateMoves(original: number[], updated: number[]): ApiCall[] {
+    const indexMap = new Map<number, number>();
+    original.forEach((item, index) => indexMap.set(item, index));
+
+    const updatedIndices = updated.map((item) => indexMap.get(item)!);
+    const lis = findLIS(updatedIndices);
+
+    const lisSet = new Set(lis);
+    const moves: ApiCall[] = [];
+
+    updated.forEach((item, index) => {
+      if (!lisSet.has(indexMap.get(item)!)) {
+        moves.push({
+          originalIndex: indexMap.get(item)!,
+          insertBeforeIndex:
+            index + 1 < updated.length
+              ? indexMap.get(updated[index + 1])
+              : null,
+        });
+      }
+    });
+
+    return moves;
+  }
+
   const mapData = () => {
     if (spotifyData && spotifyData.items.length) {
-      //let cumlTime = 0;
-
-      const updatedData = spotifyData.items.map((song) => {
-        const key = song.track.id;
-        const name = song.track.name;
-        const artistName = song.track.artists[0].name;
-        const albumName = song.track.album.name;
-        const albumArt = song.track.album.images[0].url;
-        const songDuration = song.track.duration_ms / 1000;
-        // const raceTimeFrom = parseFloat(cumlTime.toFixed(2));
-        // const raceTimeTo = parseFloat((cumlTime + songDuration).toFixed(2));
-        // const lapFrom = parseFloat((raceTimeFrom / pace).toFixed(2));
-        // const lapTo = parseFloat((raceTimeTo / pace).toFixed(2));
-
-        //cumlTime += songDuration;
+      const updatedData = spotifyData.items.map((song, index) => {
         return {
-          key,
-          name,
-          artistName,
-          albumName,
-          albumArt,
-          // raceTimeFrom,
-          // raceTimeTo,
-          // lapFrom,
-          // lapTo,
-          songDuration: songDuration,
+          key: song.track.id,
+          name: song.track.name,
+          artistName: song.track.artists[0].name,
+          albumName: song.track.album.name,
+          albumArt: song.track.album.images[0].url,
+          originalIndex: index,
+          songDuration: song.track.duration_ms / 1000,
         };
       });
       setData(updatedData);
     }
-  };
-
-  const loadPlaylist = () => {
-    fetchData();
   };
 
   useEffect(() => {
@@ -103,5 +190,5 @@ export function useRuniflyPlaylist(
     })();
   }, [playlistKey]);
 
-  return { loading, data, error };
+  return { loading, data, error, updateData };
 }
