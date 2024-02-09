@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { useSpotify } from "./useSpotify";
-import { Scopes, SnapshotReference, SpotifyApi } from "@spotify/web-api-ts-sdk";
+import {
+  Page,
+  PlaylistedTrack,
+  Scopes,
+  SnapshotReference,
+  SpotifyApi,
+  Track,
+  TrackItem,
+} from "@spotify/web-api-ts-sdk";
 
 export interface RuniflySong {
   key: string;
@@ -17,22 +25,27 @@ export interface RuniflySong {
 }
 
 export function useRuniflyPlaylist(
-  playlistKey: string,
+  playlistKey: string | undefined,
   distance: number,
   pace: number
 ) {
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<RuniflySong[]>([]);
-  const [error, setError] = useState(null);
-  const [spotifyData, setSpotifyData] = useState();
+  const [error, setError] = useState<Error | unknown>();
+  const [spotifyData, setSpotifyData] =
+    useState<Page<PlaylistedTrack<TrackItem>>>();
 
-  const sdk: SpotifyApi = useSpotify(
+  const sdk: SpotifyApi | null = useSpotify(
     import.meta.env.VITE_SPOTIFY_CLIENT_ID,
     import.meta.env.VITE_REDIRECT_TARGET,
     Scopes.playlist
   );
 
-  async function updateData(newData: RuniflySong[]): string {
+  async function updateData(
+    newData: RuniflySong[]
+  ): Promise<string | undefined> {
+    if (playlistKey === undefined) return;
+
     const originalPositions = new Map(
       data.map((song, index) => [song.key, index])
     );
@@ -41,11 +54,11 @@ export function useRuniflyPlaylist(
     );
 
     setLoading(true);
-    let response: SnapshotReference = undefined;
+    let response: SnapshotReference | undefined = undefined;
 
     const itemsToMove = calculateMoves(
       Array.from(originalPositions.values()),
-      updatedPositions
+      updatedPositions.filter((position) => position !== undefined) as number[]
     );
 
     await Promise.all(
@@ -62,7 +75,7 @@ export function useRuniflyPlaylist(
 
     setData(newData);
     setLoading(false);
-    return response?.snapshot_id;
+    return response!.snapshot_id;
   }
 
   type ApiCall = {
@@ -120,32 +133,49 @@ export function useRuniflyPlaylist(
 
     updated.forEach((item, index) => {
       if (!lisSet.has(indexMap.get(item)!)) {
-        moves.push({
-          originalIndex: indexMap.get(item)!,
-          insertBeforeIndex:
-            index + 1 < updated.length
-              ? indexMap.get(updated[index + 1])
-              : null,
-        });
+        const insertBeforeIndex =
+          index + 1 < updated.length
+            ? indexMap.get(updated[index + 1])
+            : undefined;
+        if (insertBeforeIndex !== undefined) {
+          moves.push({
+            originalIndex: indexMap.get(item)!,
+            insertBeforeIndex,
+          });
+        }
       }
     });
 
     return moves;
   }
 
+  function isTrack(obj: unknown): obj is Track {
+    return (
+      obj !== undefined &&
+      (obj as Track).artists &&
+      Array.isArray((obj as Track).artists)
+    );
+  }
+
   const mapData = () => {
     if (spotifyData && spotifyData.items.length) {
-      const updatedData = spotifyData.items.map((song, index) => {
-        return {
-          key: song.track.id,
-          name: song.track.name,
-          artistName: song.track.artists[0].name,
-          albumName: song.track.album.name,
-          albumArt: song.track.album.images[0].url,
-          originalIndex: index,
-          songDuration: song.track.duration_ms / 1000,
-        };
-      });
+      const updatedData: RuniflySong[] = spotifyData.items.map(
+        (song, index: number) => {
+          return {
+            key: song.track.id,
+            name: song.track.name,
+            artistName: isTrack(song.track) ? song.track.artists[0].name : "",
+            albumName: isTrack(song.track) ? song.track.album.name : "",
+            albumArt: isTrack(song.track) ? song.track.album.images[0].url : "",
+            originalIndex: index,
+            songDuration: song.track.duration_ms / 1000,
+            raceTimeFrom: 0,
+            raceTimeTo: 0,
+            lapFrom: 0,
+            lapTo: 0,
+          };
+        }
+      );
       setData(updatedData);
     }
   };
@@ -156,7 +186,10 @@ export function useRuniflyPlaylist(
 
   useEffect(() => {
     (async () => {
-      if (playlistKey === undefined) setData([]);
+      if (playlistKey === undefined) {
+        setData([]);
+        return;
+      }
       setLoading(true);
 
       try {
