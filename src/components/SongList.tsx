@@ -12,7 +12,6 @@ import { CSS } from "@dnd-kit/utilities";
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { Avatar, Space, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
-
 import { usePlaylistContext } from "../data/PlaylistContext";
 import { RuniflySong } from "../hooks/useSpotifyPlaylist";
 
@@ -180,7 +179,7 @@ const SongList: React.FC = () => {
                   sethoveredSong(record);
                 },
                 onMouseLeave: () => {
-                  sethoveredSong(null);
+                  sethoveredSong(undefined);
                 },
                 className:
                   record.key === hoveredSong?.key ? "ant-table-row-hover" : "",

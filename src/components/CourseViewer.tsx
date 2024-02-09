@@ -74,7 +74,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
 
       {gpx && (
         <Card>
-          <ElevationGraph gpx={gpx} />
+          <ElevationGraph />
         </Card>
       )}
     </div>

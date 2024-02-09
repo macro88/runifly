@@ -111,7 +111,7 @@ export type GeoJson = {
     desc: string;
     time: Date;
     author: Author;
-    link: string;
+    link: Link;
   };
 };
 

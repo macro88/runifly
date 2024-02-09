@@ -1,4 +1,5 @@
 import {
+  MaxInt,
   Page,
   Scopes,
   SimplifiedPlaylist,
@@ -14,7 +15,7 @@ interface DataType {
   key: string;
   name: string;
   description: string;
-  image: string;
+  image: string | undefined;
   songs: number;
   snapshotId: string;
 }
@@ -46,7 +47,7 @@ const columns: ColumnsType<DataType> = [
 ];
 
 const Playlists: React.FC = () => {
-  const [dataSource, setDataSource] = useState([]);
+  const [dataSource, setDataSource] = useState<DataType[]>([]);
   const [loading, setLoading] = useState(false);
   const { setplaylistKey, setplaylistImage, setplaylistName, setsnapshotId } =
     usePlaylistContext();
@@ -58,7 +59,7 @@ const Playlists: React.FC = () => {
     },
   });
 
-  const sdk: SpotifyApi = useSpotify(
+  const sdk: SpotifyApi | null = useSpotify(
     import.meta.env.VITE_SPOTIFY_CLIENT_ID,
     import.meta.env.VITE_REDIRECT_TARGET,
     Scopes.playlist
@@ -67,11 +68,11 @@ const Playlists: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
 
-    const page: Page<SimplifiedPlaylist> =
+    const page: Page<SimplifiedPlaylist> | undefined =
       await sdk?.currentUser.playlists.playlists(
-        tableParams?.pagination?.pageSize,
-        tableParams?.pagination?.pageSize *
-          (tableParams?.pagination?.current - 1)
+        Math.min(50, tableParams?.pagination?.pageSize ?? 50) as MaxInt<50>,
+        tableParams?.pagination?.pageSize ??
+          50 * (tableParams?.pagination?.current ?? 2 - 1)
       );
 
     if (page && page.items) {
@@ -85,7 +86,7 @@ const Playlists: React.FC = () => {
             playlist.images && playlist.images.length
               ? playlist.images[0].url
               : undefined,
-          songs: playlist.tracks.total,
+          songs: playlist.tracks?.total ?? 0,
         }))
       );
       setTableParams({
@@ -107,12 +108,12 @@ const Playlists: React.FC = () => {
 
   const handleTableChange: TableProps["onChange"] = (
     pagination,
-    filters,
+
     sorter
   ) => {
     setTableParams({
       pagination,
-      filters,
+
       ...sorter,
     });
 
