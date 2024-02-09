@@ -19,7 +19,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [primaryColor, setPrimaryColor] = useState<string>("#1DB954");
   const {
-    token: { colorFillContent, borderRadiusLG },
+    token: { colorFillContent },
   } = theme.useToken();
 
   const value = {

@@ -7,10 +7,8 @@ import {
 import React, { useEffect, useState } from "react";
 import { useSpotify } from "../hooks/useSpotify";
 import { Avatar, Space, Table, Typography } from "antd";
-
-import { ColumnsType, TablePaginationConfig } from "antd/es/table";
+import { ColumnsType, TablePaginationConfig, TableProps } from "antd/es/table";
 import { usePlaylistContext } from "../data/PlaylistContext";
-import { useCourseContext } from "../data/CourseContext";
 
 interface DataType {
   key: string;
@@ -27,7 +25,7 @@ interface TableParams {
 
 const columns: ColumnsType<DataType> = [
   {
-    title: "Playlist",
+    title: "Select a Playlist",
     dataIndex: "name",
     ellipsis: true,
     render: (name: string, record: DataType) => (
@@ -35,7 +33,7 @@ const columns: ColumnsType<DataType> = [
         <Avatar shape="square" src={record.image}>
           {name}
         </Avatar>
-        <Space direction="vertical" size="compact">
+        <Space direction="vertical" size={0}>
           <strong>{name}</strong>
           {record.description}
           <Typography.Text type="secondary">
@@ -50,14 +48,9 @@ const columns: ColumnsType<DataType> = [
 const Playlists: React.FC = () => {
   const [dataSource, setDataSource] = useState([]);
   const [loading, setLoading] = useState(false);
-  const {
-    playlistKey,
-    setplaylistKey,
-    setplaylistImage,
-    setplaylistName,
-    setsnapshotId,
-  } = usePlaylistContext();
-  const { setName } = useCourseContext();
+  const { setplaylistKey, setplaylistImage, setplaylistName, setsnapshotId } =
+    usePlaylistContext();
+
   const [tableParams, setTableParams] = useState<TableParams>({
     pagination: {
       current: 1,
@@ -76,8 +69,9 @@ const Playlists: React.FC = () => {
 
     const page: Page<SimplifiedPlaylist> =
       await sdk?.currentUser.playlists.playlists(
-        tableParams.pagination.pageSize,
-        tableParams.pagination.pageSize * (tableParams.pagination.current - 1)
+        tableParams?.pagination?.pageSize,
+        tableParams?.pagination?.pageSize *
+          (tableParams?.pagination?.current - 1)
       );
 
     if (page && page.items) {

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSpotify } from "../hooks/useSpotify";
 import { Scopes, UserProfile } from "@spotify/web-api-ts-sdk";
-import { Avatar } from "antd";
+import { Avatar, Space } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 
 const SpotifyUser = () => {
@@ -11,7 +11,7 @@ const SpotifyUser = () => {
     Scopes.userDetails
   );
 
-  const [profileData, setProfileData] = useState<UserProfile>(null); // State variable to store profile data
+  const [profileData, setProfileData] = useState<UserProfile>(); // State variable to store profile data
 
   useEffect(() => {
     (async () => {
@@ -21,14 +21,18 @@ const SpotifyUser = () => {
   }, [sdk]);
 
   return (
-    <Avatar
-      shape="square"
-      icon={profileData?.images.length ? undefined : <UserOutlined />}
-      src={profileData?.images.length ? profileData?.images[0]?.url : undefined}
-      title={profileData?.display_name}
-    >
+    <Space>
+      <Avatar
+        shape="square"
+        icon={profileData?.images.length ? undefined : <UserOutlined />}
+        src={
+          profileData?.images.length ? profileData?.images[0]?.url : undefined
+        }
+      >
+        {profileData?.display_name}
+      </Avatar>
       {profileData?.display_name}
-    </Avatar>
+    </Space>
   );
 };
 

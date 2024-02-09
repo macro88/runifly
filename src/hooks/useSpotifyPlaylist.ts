@@ -1,11 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSpotify } from "./useSpotify";
-import {
-  Scopes,
-  SimplifiedTrack,
-  SnapshotReference,
-  SpotifyApi,
-} from "@spotify/web-api-ts-sdk";
+import { Scopes, SnapshotReference, SpotifyApi } from "@spotify/web-api-ts-sdk";
 
 export interface RuniflySong {
   key: string;
@@ -13,7 +8,7 @@ export interface RuniflySong {
   name: string;
   artistName: string;
   albumName: string;
-  almumArt: string;
+  albumArt: string;
   songDuration: number;
   raceTimeFrom: number;
   raceTimeTo: number;
@@ -24,8 +19,7 @@ export interface RuniflySong {
 export function useRuniflyPlaylist(
   playlistKey: string,
   distance: number,
-  pace: number,
-  snapShotId: string
+  pace: number
 ) {
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<RuniflySong[]>([]);
@@ -37,19 +31,6 @@ export function useRuniflyPlaylist(
     import.meta.env.VITE_REDIRECT_TARGET,
     Scopes.playlist
   );
-
-  const fetchData = async () => {
-    if (playlistKey === undefined) return;
-    setLoading(true);
-
-    try {
-      const data = await sdk?.playlists.getPlaylistItems(playlistKey);
-      setSpotifyData(data);
-    } catch (error) {
-      setError(error);
-    }
-    setLoading(false);
-  };
 
   async function updateData(newData: RuniflySong[]): string {
     const originalPositions = new Map(
@@ -91,7 +72,6 @@ export function useRuniflyPlaylist(
 
   //Todo: move this to a helper file
   function findLIS(sequence: number[]): number[] {
-    const piles: number[] = [];
     const predecessors: number[] = new Array(sequence.length);
     const indexes: number[] = new Array(sequence.length + 1);
     let length = 0;
