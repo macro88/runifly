@@ -1,11 +1,9 @@
-import React, { useContext } from "react";
+import React from "react";
 import { Button } from "antd";
 import { SyncOutlined } from "@ant-design/icons";
-import { useCourseContext } from "../data/CourseContext";
 import { usePlaylistContext } from "../data/PlaylistContext";
 
 const ResetButton: React.FC = () => {
-  const { reset } = useCourseContext();
   const { syncRequired, sync, loading } = usePlaylistContext();
 
   const handleSync = () => {

@@ -1,8 +1,5 @@
-//import GpxParser from "gpx-parser-ts";
-
 import GpxParser from "./GpxParser";
-import { Decimal } from "decimal.js";
-export type GeoJsonPoint = [Decimal, Decimal, number];
+export type GeoJsonPoint = [number, number, number];
 export type Gpx = {
   name: string;
   points: PointDetail[];
@@ -36,15 +33,15 @@ export function totalDistance(gpx: Gpx): number {
 }
 
 function calculateDistance(point1: GeoJsonPoint, point2: GeoJsonPoint): number {
-  const [lon1, lat1, ele1] = point1;
-  const [lon2, lat2, ele2] = point2;
+  const [lon1, lat1] = point1;
+  const [lon2, lat2] = point2;
 
-  var dLat = degreesToRadians(lat2 - lat1);
-  var dLon = degreesToRadians(lon2 - lon1);
-  var lat1R = degreesToRadians(lat1);
-  var lat2R = degreesToRadians(lat2);
+  const dLat = degreesToRadians(lat2 - lat1);
+  const dLon = degreesToRadians(lon2 - lon1);
+  const lat1R = degreesToRadians(lat1);
+  const lat2R = degreesToRadians(lat2);
 
-  var a =
+  const a =
     Math.pow(Math.sin(dLat / 2), 2) +
     Math.pow(Math.sin(dLon / 2), 2) * Math.cos(lat1R) * Math.cos(lat2R);
 
@@ -64,7 +61,7 @@ function radiansToLength(radians: number): number {
   return radians * factor;
 }
 
-function calculateDistanceHaversine(
+export function calculateDistanceHaversine(
   point1: GeoJsonPoint,
   point2: GeoJsonPoint
 ): number {
@@ -143,17 +140,21 @@ export function degreesToRadians(degrees: number): number {
   return (radians * Math.PI) / 180;
 }
 
-export function degreesDecimalToRadians(degrees: Decimal): Decimal {
-  const radians = degrees.mod(360);
-  return radians.times(Math.PI).dividedBy(180);
+export function degreesDecimalToRadians(degrees: number): number {
+  const radians = degrees % 360;
+  return radians * (Math.PI / 180);
 }
 
-function toRadians(degrees) {
+function toRadians(degrees: number) {
   return degrees * (Math.PI / 180);
 }
-function calculateDistanceVincenty(point1, point2) {
-  const [lon1, lat1, ele1] = point1;
-  const [lon2, lat2, ele2] = point2;
+
+export function calculateDistanceVincenty(
+  point1: GeoJsonPoint,
+  point2: GeoJsonPoint
+) {
+  const [lon1, lat1] = point1;
+  const [lon2, lat2] = point2;
 
   const a = 6378137; // Semi-major axis of the Earth
   const b = 6356752.3142; // Semi-minor axis of the Earth
@@ -220,7 +221,7 @@ function calculateDistanceVincenty(point1, point2) {
   const s = b * A * (sigma - deltaSigma); // The distance in meters
 
   // Calculate elevation difference
-  const eleDifference = ele2 - ele1;
+  //const eleDifference = ele2 - ele1;
 
   // Calculate total distance including elevation
   const totalDistance = Math.sqrt(s * s);
@@ -274,7 +275,7 @@ export function createFakeGpx(
   };
 }
 
-function toTime(mins: number) {
+export function toTime(mins: number) {
   // Convert it to seconds
   let totalSeconds = mins * 60;
 
@@ -330,7 +331,7 @@ function smoothPoints(
   return smoothedPoints;
 }
 
-export async function parseFile(file: File): Gpx {
+export async function parseFile(file: File): Promise<Gpx> {
   const parser: GpxParser = new GpxParser();
 
   const contents = await file.text();

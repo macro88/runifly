@@ -1,11 +1,11 @@
 import { Col, Row, Space, Typography, Image, Layout, theme } from "antd";
-import React, { useState } from "react";
+import React from "react";
 import TargetTimePace from "./TargetTimePace";
 import CourseViewer from "./CourseViewer";
 import { useCourseContext } from "../data/CourseContext";
 import SongList from "./SongList";
 import Playlists from "./Playlists";
-import { Content, Header } from "antd/es/layout/layout";
+import { Content } from "antd/es/layout/layout";
 import { useThemeContext } from "../data/ThemeContext";
 import { darkPlaylist, lightPlaylist } from "../utils/placeholders";
 import { usePlaylistContext } from "../data/PlaylistContext";
@@ -18,7 +18,7 @@ interface PlayListManagerProps {
 
 const PlayListManager: React.FC<PlayListManagerProps> = () => {
   const { name, setName } = useCourseContext();
-  const { playlistKey, playlistImage, playlistName } = usePlaylistContext();
+  const { playlistKey, playlistImage } = usePlaylistContext();
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();

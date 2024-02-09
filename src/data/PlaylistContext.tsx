@@ -9,11 +9,11 @@ import { RuniflySong, useRuniflyPlaylist } from "../hooks/useSpotifyPlaylist";
 import { useCourseContext } from "./CourseContext";
 
 interface PlaylistContextType {
-  playlistKey: string;
-  setplaylistKey: (playlistKey: string) => void;
+  playlistKey: string | undefined;
+  setplaylistKey: (playlistKey: string | undefined) => void;
 
-  snapshotId: string;
-  setsnapshotId: (snapshotId: string) => void;
+  snapshotId: string | undefined;
+  setsnapshotId: (snapshotId: string | undefined) => void;
 
   playlistName: string;
   setplaylistName: (playlistName: string) => void;
@@ -22,7 +22,7 @@ interface PlaylistContextType {
   setplaylistImage: (playlistImage: string) => void;
 
   hoveredSong: RuniflySong;
-  sethoveredSong: (songKey: RuniflySong) => void;
+  sethoveredSong: (songKey: RuniflySong | null) => void;
   reset: () => void;
 
   loading: boolean;
@@ -33,6 +33,7 @@ interface PlaylistContextType {
   setSongs: (songs: RuniflySong[]) => void;
 
   sync: () => void;
+  updateSongOrder: (newSongs: RuniflySong[]) => void;
 }
 
 const defaultValues = {
@@ -63,10 +64,10 @@ const updateTimingData = (songs: RuniflySong[], pace: number) => {
 export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   children,
 }) => {
-  const [playlistKey, setplaylistKey] = useState<string>();
+  const [playlistKey, setplaylistKey] = useState<string | undefined>();
   const [playlistName, setplaylistName] = useState<string>();
   const [playlistImage, setplaylistImage] = useState<string>();
-  const [snapshotId, setsnapshotId] = useState<string>();
+  const [snapshotId, setsnapshotId] = useState<string | undefined>();
   const [hoveredSong, sethoveredSong] = useState<RuniflySong>();
   const [syncRequired, setsyncRequired] = useState<boolean>(false);
   const [songs, setSongs] = useState<RuniflySong[]>([]);
@@ -75,13 +76,11 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   const { data, error, loading, updateData } = useRuniflyPlaylist(
     playlistKey,
     pace,
-    distance,
-    snapshotId
+    distance
   );
 
   const sync = async () => {
     const snapshotId = await updateData(songs);
-    console.log("snapshotId", snapshotId);
     setsnapshotId(snapshotId);
     setsyncRequired(false);
   };
@@ -93,18 +92,7 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     }
   }, [data]);
 
-  useEffect(() => {
-    if (!loading) {
-      //console.log("songs changed");
-      //updateTimingData(songs, pace);
-    }
-  }, [songs]);
-
-  const updateSongOrder = (
-    newSongs: RuniflySong[],
-    key: string,
-    newIndex: number
-  ) => {
+  const updateSongOrder = (newSongs: RuniflySong[]) => {
     setsyncRequired(true);
     setSongs(newSongs);
     updateTimingData(newSongs, pace);

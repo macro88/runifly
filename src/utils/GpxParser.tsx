@@ -25,10 +25,10 @@ export default class GpxParser {
       explicitArray: false,
       mergeAttrs: true,
     };
-    let parser = new xml2js.Parser(parserOptions);
-    let jsonReturn: GpxJson = {} as GpxJson;
+    const parser = new xml2js.Parser(parserOptions);
+    const jsonReturn: GpxJson = {} as GpxJson;
     try {
-      let result = await parser.parseStringPromise(gpxstring);
+      const result = await parser.parseStringPromise(gpxstring);
       jsonReturn.metadata = result.gpx.metadata;
       jsonReturn.wpt = result.gpx.wpt;
       if (result.gpx.rte) {
@@ -87,10 +87,10 @@ export default class GpxParser {
     const lat1 = this.toRadian(wpt1.lat);
     const lat2 = this.toRadian(wpt2.lat);
 
-    var a =
+    const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return earthRadiusKm * c;
   }
 
@@ -117,19 +117,19 @@ export default class GpxParser {
   calculateElevationData(points: Point[]): Elevation {
     let posEleChange = 0,
       negEleChange = 0,
-      ret: Elevation = {} as Elevation,
-      elevations: number[] = [],
       sum = 0;
+    const ret: Elevation = {} as Elevation,
+      elevations: number[] = [];
 
     points.forEach((curPoint, index) => {
-      let curEle = curPoint.ele;
+      const curEle = curPoint.ele;
       if (curEle) {
         elevations.push(curEle);
         sum += curEle;
 
         if (index < points.length - 1) {
-          let nextEle = points[index + 1].ele;
-          let diff = nextEle - curEle;
+          const nextEle = points[index + 1].ele;
+          const diff = nextEle - curEle;
 
           if (diff < 0) {
             negEleChange += diff;
@@ -157,17 +157,17 @@ export default class GpxParser {
    * @returns {StreamJson} An object of arrays where for array A and array B, A[i] is the same timestamp as B[i]
    */
   toStreamJSON(points: Point[], options?: StreamJSONInputOptions): StreamJson {
-    let distance: number[] = [0];
-    let distanceBelowThreshold: number[] = [0];
-    let altitude: number[] = [points[0].ele];
-    let gradeAdjustedDistance: number[] = [0];
-    let elapsedTime: number[] = [0];
-    let movingTime: number[] = [0];
-    let extension: any = [];
+    const distance: number[] = [0];
+    const distanceBelowThreshold: number[] = [0];
+    const altitude: number[] = [points[0].ele];
+    const gradeAdjustedDistance: number[] = [0];
+    const elapsedTime: number[] = [0];
+    const movingTime: number[] = [0];
+    const extension: object[] = [];
 
     for (let i = 1; i < points.length; i++) {
-      let point = points[i];
-      let prevPoint = points[i - 1];
+      const point = points[i];
+      const prevPoint = points[i - 1];
 
       const dist = this.calculateDistanceBetweenPoints(prevPoint, point);
       distance[i] = dist;
@@ -216,7 +216,7 @@ export default class GpxParser {
    * @returns {} a GeoJSON formatted Object
    */
   toGeoJSON(gpxJson: GpxJson): GeoJson {
-    let geoJson = {
+    const geoJson = {
       type: "FeatureCollection",
       features: [] as GeoJsonFeature[],
       properties: {
@@ -228,8 +228,8 @@ export default class GpxParser {
       },
     };
 
-    gpxJson.trk.forEach((track, index) => {
-      let feature: GeoJsonFeature = {
+    gpxJson.trk.forEach((track) => {
+      const feature: GeoJsonFeature = {
         type: "Feature",
         geometry: {
           type: "LineString",
@@ -246,8 +246,8 @@ export default class GpxParser {
         },
       };
 
-      track.trkseg.trkpt.forEach((pt, index) => {
-        let geoPt: Point = {
+      track.trkseg.trkpt.forEach((pt) => {
+        const geoPt: Point = {
           lon: pt.lon,
           lat: pt.lat,
           ele: pt.ele,
@@ -260,8 +260,8 @@ export default class GpxParser {
       geoJson.features.push(feature);
     });
 
-    gpxJson.rte?.forEach((route, index) => {
-      let feature: GeoJsonFeature = {
+    gpxJson.rte?.forEach((route) => {
+      const feature: GeoJsonFeature = {
         type: "Feature",
         geometry: {
           type: "LineString",
@@ -279,7 +279,7 @@ export default class GpxParser {
       };
 
       route.rtept.forEach((pt) => {
-        let geoPt: Point = {
+        const geoPt: Point = {
           lon: pt.lon,
           lat: pt.lat,
           ele: pt.ele,
@@ -293,7 +293,7 @@ export default class GpxParser {
     });
 
     gpxJson.wpt?.forEach((pt) => {
-      let feature: GeoJsonFeature = {
+      const feature: GeoJsonFeature = {
         type: "Feature",
         geometry: {
           type: "Point",

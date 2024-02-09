@@ -52,7 +52,7 @@ export type Point = {
   lon: number;
   ele: number;
   time: Date;
-  extensions?: {};
+  extensions?: object;
 };
 
 export type Distance = {
@@ -92,14 +92,14 @@ export type GeoJsonFeature = {
     coordinates: Point[];
   };
   properties: {
-    name: any;
-    cmt: any;
-    desc: any;
-    src?: any;
-    number?: any;
-    link?: any;
-    type?: any;
-    sym?: any;
+    name: string;
+    cmt: string;
+    desc: string;
+    src?: string;
+    number?: string;
+    link?: Link;
+    type?: string;
+    sym?: string;
   };
 };
 
@@ -107,11 +107,11 @@ export type GeoJson = {
   type: string;
   features: GeoJsonFeature[];
   properties: {
-    name: any;
-    desc: any;
-    time: any;
+    name: string;
+    desc: string;
+    time: Date;
     author: Author;
-    link: any;
+    link: string;
   };
 };
 
@@ -126,13 +126,13 @@ export type StreamJson = {
   distance: number[];
   distanceBelowThreshold: number[];
   altitude: number[];
-  extension: any;
+  extension: object;
   gradeAdjustedDistance: number[];
   elapsedTime: number[];
   movingTime: number[];
 };
 
 export type StreamJSONInputOptions = {
-  extensionProcessor?: (extension: any) => any;
+  extensionProcessor?: (extension: object) => object;
   speedThreshold?: number;
 };

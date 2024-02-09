@@ -10,7 +10,7 @@ type Duration = ReturnType<typeof dayjs.duration>;
 
 interface TargetTimePaceProps {}
 
-const TargetTimePace: React.FC<TargetTimePaceProps> = ({}) => {
+const TargetTimePace: React.FC<TargetTimePaceProps> = () => {
   const { distance, setDistance, setPace } = useCourseContext();
 
   const defaultPace = dayjs.duration(5.5 * 60, "seconds");

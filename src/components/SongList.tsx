@@ -1,7 +1,6 @@
 import { MenuOutlined } from "@ant-design/icons";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { DndContext } from "@dnd-kit/core";
-import dayjs from "dayjs";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   arrayMove,
@@ -10,13 +9,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Avatar, Layout, Space, Table } from "antd";
+import React, { useLayoutEffect, useRef, useState } from "react";
+import { Avatar, Space, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 import { usePlaylistContext } from "../data/PlaylistContext";
-import { RuniflySong, useRuniflyPlaylist } from "../hooks/useSpotifyPlaylist";
-import { useCourseContext } from "../data/CourseContext";
+import { RuniflySong } from "../hooks/useSpotifyPlaylist";
 
 const columns: ColumnsType<RuniflySong> = [
   {
@@ -26,7 +24,7 @@ const columns: ColumnsType<RuniflySong> = [
   {
     title: "#",
     dataIndex: "index",
-    render: (_: any, __: any, index: number) => index + 1,
+    render: (_: unknown, __: RuniflySong, index: number) => index + 1,
     width: 50,
   },
   {
@@ -36,7 +34,7 @@ const columns: ColumnsType<RuniflySong> = [
     render: (name: string, record: RuniflySong) => (
       <Space>
         <Avatar shape="square" src={record.albumArt}></Avatar>
-        <Space direction="vertical" size="compact">
+        <Space direction="vertical" size={0}>
           <strong>{name}</strong>
           {record.artistName}
         </Space>
@@ -89,9 +87,6 @@ function formatTimeFromSeconds(seconds: number) {
 
   return timeString;
 }
-function formatTimeFromMilliseconds(ms: number) {
-  return formatTimeFromSeconds(ms / 1000);
-}
 
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   "data-row-key": string;
@@ -138,16 +133,8 @@ const Row = ({ children, ...props }: RowProps) => {
 };
 
 const SongList: React.FC = () => {
-  const {
-    playlistKey,
-    sethoveredSong,
-    hoveredSong,
-    setsyncRequired,
-    songs,
-    setSongs,
-    loading,
-    updateSongOrder,
-  } = usePlaylistContext();
+  const { sethoveredSong, hoveredSong, songs, loading, updateSongOrder } =
+    usePlaylistContext();
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (active.id !== over?.id) {
@@ -156,13 +143,7 @@ const SongList: React.FC = () => {
 
       const newSongs = arrayMove(songs, activeIndex, overIndex);
 
-      updateSongOrder(newSongs, active.id, overIndex);
-
-      // (previous) => {
-      //   const activeIndex = previous.findIndex((i) => i.key === active.id);
-      //   const overIndex = previous.findIndex((i) => i.key === over?.id);
-      //   return arrayMove(previous, activeIndex, overIndex);
-      // }
+      updateSongOrder(newSongs);
     }
   };
 
@@ -172,6 +153,7 @@ const SongList: React.FC = () => {
 
   useLayoutEffect(() => {
     const node = tableRef.current;
+    if (!node) return;
     const { top } = node.getBoundingClientRect();
 
     // normally TABLE_HEADER_HEIGHT would be 55.
@@ -198,7 +180,7 @@ const SongList: React.FC = () => {
                   sethoveredSong(record);
                 },
                 onMouseLeave: () => {
-                  sethoveredSong(undefined);
+                  sethoveredSong(null);
                 },
                 className:
                   record.key === hoveredSong?.key ? "ant-table-row-hover" : "",

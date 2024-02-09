@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React from "react";
 import { Button } from "antd";
 import { PoweroffOutlined } from "@ant-design/icons";
 import { useCourseContext } from "../data/CourseContext";

@@ -1,16 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
-import { UploadOutlined } from "@ant-design/icons";
-import { Button, Card, Space } from "antd";
-//import GpxParser from "gpxparser";
-
+import React, { useRef, useState } from "react";
+import { Card } from "antd";
 import { ElevationGraph } from "./ElevationGraph";
 
-import {
-  Gpx,
-  createFakeGpx,
-  parseFile,
-  totalDistance,
-} from "../utils/gpxUtils";
+import { parseFile, totalDistance } from "../utils/gpxUtils";
 import { useCourseContext } from "../data/CourseContext";
 
 interface CourseViewerProps {
@@ -20,12 +12,7 @@ interface CourseViewerProps {
 const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { name, distance, pace, gpx, setDistance, setName, setGpx } =
-    useCourseContext();
-
-  useEffect(() => {
-    if (!gpx) setGpx(createFakeGpx(name, distance, pace));
-  }, [name, distance, pace]);
+  const { gpx, setDistance, setName, setGpx } = useCourseContext();
 
   const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
