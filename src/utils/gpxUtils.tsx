@@ -358,7 +358,7 @@ export async function parseFile(file: File): Promise<Gpx> {
   };
   //console.log(gpx);
   //console.log(parser.toStreamJSON(gpx.trk[0].trkseg.trkpt));
-  console.log(x);
+  //console.log(x);
 
   return x;
 }
@@ -371,12 +371,16 @@ export function aggregateLaps(points: PointDetail[]): Lap[] {
   let elevationGain = 0;
   let elevationLoss = 0;
   let time = 0;
+  let lastElevation = 0;
 
   for (const point of points) {
+    //store the last good elevation in case the current point has no elevation. Some files don't have elevation data for every point.
+    if (point.elevation) lastElevation = point.elevation;
+
     totalDistance += point.distance;
     elevationGain += point.elevationGain;
     elevationLoss += point.elevationLoss;
-    elevations.push(point.elevation);
+    elevations.push(point.elevation ?? lastElevation);
     time += point.time;
 
     if (totalDistance >= 1000) {
