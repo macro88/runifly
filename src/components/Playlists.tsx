@@ -71,8 +71,8 @@ const Playlists: React.FC = () => {
     const page: Page<SimplifiedPlaylist> | undefined =
       await sdk?.currentUser.playlists.playlists(
         Math.min(50, tableParams?.pagination?.pageSize ?? 50) as MaxInt<50>,
-        tableParams?.pagination?.pageSize ??
-          50 * (tableParams?.pagination?.current ?? 2 - 1)
+        (tableParams?.pagination?.pageSize ?? 50) *
+          ((tableParams?.pagination?.current ?? 0) - 1)
       );
 
     if (page && page.items) {

@@ -114,7 +114,7 @@ export const ElevationGraph: React.FC = () => {
         }
       })
       .on("mouseout", () => {
-        sethoveredSong(null);
+        sethoveredSong(undefined);
       });
   }, [chartData, gpx, hoveredSong, sethoveredSong, songs]);
 
@@ -125,6 +125,7 @@ export const ElevationGraph: React.FC = () => {
         elevation,
       }))
     );
+    console.log(data);
     setChartData(data);
   }, [gpx]);
 
