@@ -30,13 +30,13 @@ jobs:
       - name: Install dependencies
         run: npm install
         working-directory: ./
-        env:
-          VITE_SPOTIFY_CLIENT_ID: ${{secrets.VITE_SPOTIFY_CLIENT_ID}}
-          VITE_REDIRECT_TARGET: ${{vars.VITE_REDIRECT_TARGET}}
 
       - name: Build project
         run: npm run build
         working-directory: ./
+        env:
+          VITE_SPOTIFY_CLIENT_ID: ${{secrets.VITE_SPOTIFY_CLIENT_ID}}
+          VITE_REDIRECT_TARGET: ${{vars.VITE_REDIRECT_TARGET}}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
