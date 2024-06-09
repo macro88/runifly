@@ -1,4 +1,4 @@
-import { MutableRefObject, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { theme } from "antd";
 import * as d3 from "d3";
 import { Gpx } from "../utils/gpxUtils";
@@ -12,7 +12,7 @@ type DataPoint = {
   elevation: number;
 };
 
-const setupSvg = (svgRef: { current: never }) => {
+const setupSvg = (svgRef: React.RefObject<SVGSVGElement>) => {
   return d3
     .select(svgRef.current)
     .attr("width", "100%")
@@ -23,7 +23,7 @@ const margin = { top: 10, right: 0, bottom: 10, left: 10 };
 
 export const ElevationGraph: React.FC = () => {
   const { token } = useToken();
-  const svgRef = useRef();
+  const svgRef = useRef<SVGSVGElement>(null);
   const [chartData, setChartData] = useState<DataPoint[]>([]);
   const { hoveredSong, songs, sethoveredSong } = usePlaylistContext();
   const { gpx } = useCourseContext();
@@ -125,7 +125,7 @@ export const ElevationGraph: React.FC = () => {
         elevation,
       }))
     );
-    console.log(data);
+
     setChartData(data);
   }, [gpx]);
 
@@ -140,21 +140,29 @@ export const ElevationGraph: React.FC = () => {
 
     const generateScaledArea = d3
       .area()
-      .x((d) => xScale(d.lap))
+      .x((d) => xScale(d[0])) //lap
       .y0(height)
-      .y1((d) => yScale(d.elevation))
+      .y1((d) => yScale(d[1])) //elevation
       .curve(d3.curveCardinal);
 
+    const chartDataTuples = chartData.map((d) => [d.lap, d.elevation]) as [
+      number,
+      number
+    ][];
+
     g.append("path")
-      .datum(chartData)
+      .datum(chartDataTuples)
       .attr("stroke", token.colorPrimary)
       .attr("stroke-width", 2)
       .attr("fill", token.colorPrimary + "50")
-      .attr("d", generateScaledArea);
+      .attr("d", () => generateScaledArea(chartDataTuples));
+    //.attr("d", generateScaledArea);
 
-    const xAxis = d3
+    const xAxis: d3.Axis<number | { valueOf(): number }> = d3
       .axisBottom(xScale)
-      .tickFormat((d) => Math.round(d))
+      .tickFormat((d) =>
+        Math.round(typeof d === "number" ? d : d.valueOf()).toString()
+      )
       .ticks(Math.min(gpx.laps.length, 50));
 
     const yAxis = d3.axisLeft(yScale).ticks(7);
@@ -166,17 +174,18 @@ export const ElevationGraph: React.FC = () => {
 };
 
 function getChart(
-  svgRef: MutableRefObject<undefined>,
+  svgRef: React.RefObject<SVGSVGElement>,
   gpx: Gpx,
   chartData: DataPoint[]
 ) {
   const svg = setupSvg(svgRef);
 
   // Map each elevation point to its relative position within the total number of points
+  const svgNode = svg.node();
   const width =
-    svg.node()?.getBoundingClientRect().width - margin.left - margin.right;
+    (svgNode?.getBoundingClientRect().width || 0) - margin.left - margin.right;
   const height =
-    svg.node()?.getBoundingClientRect().height - margin.top - margin.bottom;
+    (svgNode?.getBoundingClientRect().height || 0) - margin.top - margin.bottom;
 
   const xScale = d3
     .scaleLinear()
@@ -186,14 +195,8 @@ function getChart(
   const yScale = d3
     .scaleLinear()
     .domain([
-      Math.min(
-        0,
-        d3.min(chartData, (d) => d.elevation)
-      ),
-      Math.max(
-        100,
-        d3.max(chartData, (d) => d.elevation)
-      ),
+      Math.min(0, d3.min(chartData, (d) => d.elevation) || 0),
+      Math.max(100, d3.max(chartData, (d) => d.elevation) || 0),
     ])
     .range([height, 0]);
   return { svg, xScale, height, yScale };
