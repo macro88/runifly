@@ -30,3 +30,6 @@ dist-ssr
 
 # Verification evidence. The skill writes this and cleanup must leave it.
 .cursor/skills/verify-runifly/evidence/
+
+# Local aislop score history. The baseline is recorded in AGENTS.md.
+.aislop/history.jsonl

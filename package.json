@@ -10,7 +10,9 @@
     "lint:watch": "nodemon --exec yarn lint --watch .",
     "preview": "vite preview",
     "test": "vitest run",
-    "verify": "node .cursor/skills/verify-runifly/scripts/verify.mjs"
+    "verify": "node .cursor/skills/verify-runifly/scripts/verify.mjs",
+    "doctor": "react-doctor --no-score --no-supply-chain --blocking none --yes",
+    "aislop": "aislop scan"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
@@ -31,11 +33,13 @@
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "aislop": "^0.20.0",
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "nodemon": "^3.0.3",
     "playwright": "^1.49.1",
+    "react-doctor": "^0.9.21",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "vitest": "^2.1.9"
