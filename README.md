@@ -12,7 +12,7 @@ There is no screenshot in the repository.
 
 ## Requirements
 
-- Node.js 18, or Node.js 20 or newer. The installed Vite 5 release declares `node: ^18.0.0 || >=20.0.0`.
+- Node.js 22.13 or newer on the 22 LTS line. `.nvmrc` selects 22, and `package.json` `engines.node` is `^22.13.0`. CI installs that file with `actions/setup-node`. `expo-doctor` (a dependency of `react-doctor`) rejects Node 20. Vite 5 still declares `node: ^18.0.0 || >=20.0.0`.
 - [Yarn Classic](https://classic.yarnpkg.com/) 1.x. `yarn.lock` is a Yarn 1 lockfile.
 - A Spotify account.
 - For a Spotify app in development mode: the owner of the app needs an active Spotify Premium subscription, and each person who uses the app must be on its allowlist. Development mode allows up to five users.
