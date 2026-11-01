@@ -24,7 +24,7 @@ There is no screenshot in the repository.
 1. Open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create an app.
 2. New apps start in development mode. The app owner needs Spotify Premium. Under the app's settings, open user management and add each person who will sign in, including yourself. The allowlist holds up to five users. Spotify rejects API calls for an account that is not on the list.
 3. Add a redirect URI. It has to be the same string as `VITE_REDIRECT_TARGET`.
-   - Local development: `http://127.0.0.1:5173`. Spotify rejects `localhost`. HTTP is accepted for a loopback address.
+   - Local development: `http://127.0.0.1:5173`. Spotify rejects `localhost`. HTTP is accepted for a loopback address. The app does not start sign-in unless the redirect is `http://127.0.0.1:<port>` or an `https://` URL.
    - Production: an `https://` URL for the deployed site. Register that URL as well if you use the app anywhere other than your own machine, and set `VITE_REDIRECT_TARGET` to the same value.
 4. Copy the Client ID into `.env`, as below. Leave the client secret out of the repository. PKCE does not use it, and any `VITE_` variable is compiled into the JavaScript the browser downloads.
 
@@ -56,7 +56,7 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
 ## Known issues
 
-Spotify has removed the `/playlists/{id}/tracks` endpoints. This app still calls them through `@spotify/web-api-ts-sdk` 1.2.0: `playlists.getPlaylistItems` requests `GET /playlists/{id}/tracks`, and `playlists.movePlaylistItems` requests `PUT /playlists/{id}/tracks`. Loading songs is broken until a planned fix lands.
+`@spotify/web-api-ts-sdk` 1.2.0 still calls the removed `/playlists/{id}/tracks` routes. This app loads and reorders with `GET` and `PUT /playlists/{id}/items`, using the access token from that SDK. Spotify development mode only returns playlist songs when the signed-in user owns the playlist or collaborates on it. Any other playlist shows a message instead of an empty track list. The song count on your playlist list is `items.total` from `GET /me/playlists`.
 
 ## Roadmap
 

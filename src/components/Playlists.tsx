@@ -1,12 +1,12 @@
 import {
   MaxInt,
   Page,
-  Scopes,
   SimplifiedPlaylist,
   SpotifyApi,
 } from "@spotify/web-api-ts-sdk";
 import React, { useEffect, useState } from "react";
-import { useSpotify } from "../hooks/useSpotify";
+import { useSpotifyAuth } from "../spotify/auth";
+import { playlistItemTotal } from "../spotify/api";
 import { Avatar, Space, Table, Typography } from "antd";
 import { ColumnsType, TablePaginationConfig, TableProps } from "antd/es/table";
 import { usePlaylistContext } from "../data/PlaylistContext";
@@ -25,6 +25,8 @@ interface DataType {
   image: string | undefined;
   songs: number;
   snapshotId: string;
+  ownerId: string;
+  collaborative: boolean;
 }
 
 interface TableParams {
@@ -56,8 +58,13 @@ const columns: ColumnsType<DataType> = [
 const Playlists: React.FC = () => {
   const [dataSource, setDataSource] = useState<DataType[]>([]);
   const [loading, setLoading] = useState(false);
-  const { setplaylistKey, setplaylistImage, setplaylistName, setsnapshotId } =
-    usePlaylistContext();
+  const {
+    setplaylistKey,
+    setplaylistImage,
+    setplaylistName,
+    setsnapshotId,
+    setPlaylistOwner,
+  } = usePlaylistContext();
 
   const [tableParams, setTableParams] = useState<TableParams>({
     pagination: {
@@ -66,48 +73,7 @@ const Playlists: React.FC = () => {
     },
   });
 
-  const sdk: SpotifyApi | null = useSpotify(
-    import.meta.env.VITE_SPOTIFY_CLIENT_ID,
-    import.meta.env.VITE_REDIRECT_TARGET,
-    Scopes.playlist
-  );
-
-  const fetchData = async () => {
-    setLoading(true);
-
-    const page: Page<SimplifiedPlaylist> | undefined =
-      await sdk?.currentUser.playlists.playlists(
-        Math.min(50, tableParams?.pagination?.pageSize ?? 50) as MaxInt<50>,
-        (tableParams?.pagination?.pageSize ?? 50) *
-          ((tableParams?.pagination?.current ?? 0) - 1)
-      );
-
-    if (page && page.items) {
-      setDataSource(
-        page.items.map((playlist) => ({
-          key: playlist.id,
-          name: playlist.name,
-          description: playlist.description,
-          snapshotId: playlist.snapshot_id,
-          image:
-            playlist.images && playlist.images.length
-              ? playlist.images[0].url
-              : undefined,
-          songs: playlist.tracks?.total ?? 0,
-        }))
-      );
-      setTableParams({
-        ...tableParams,
-        pagination: {
-          ...tableParams.pagination,
-          total: page.total,
-        },
-      });
-    } else {
-      setDataSource([]);
-    }
-    setLoading(false);
-  };
+  const { sdk }: { sdk: SpotifyApi | null } = useSpotifyAuth();
 
   useEffect(() => {
     if (isFixturesMode()) {
@@ -119,14 +85,69 @@ const Playlists: React.FC = () => {
           snapshotId: "fixture-snapshot",
           image: undefined,
           songs: FIXTURE_TRACKS.length,
+          ownerId: "",
+          collaborative: false,
         },
       ]);
-      setLoading(false);
       return;
     }
 
-    fetchData();
-    // fetchData closes over the latest params. The serialised key is the dependency.
+    if (!sdk) return;
+
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const page: Page<SimplifiedPlaylist> | undefined =
+          await sdk.currentUser.playlists.playlists(
+            Math.min(50, tableParams?.pagination?.pageSize ?? 50) as MaxInt<50>,
+            (tableParams?.pagination?.pageSize ?? 50) *
+              ((tableParams?.pagination?.current ?? 0) - 1)
+          );
+
+        if (cancelled) return;
+
+        if (page && page.items) {
+          setDataSource(
+            page.items.map((playlist) => {
+              const counted = playlist as SimplifiedPlaylist & {
+                items?: { total?: number } | null;
+              };
+              return {
+                key: playlist.id,
+                name: playlist.name,
+                description: playlist.description ?? "",
+                snapshotId: playlist.snapshot_id,
+                image:
+                  playlist.images && playlist.images.length
+                    ? playlist.images[0].url
+                    : undefined,
+                songs: playlistItemTotal(counted),
+                ownerId: playlist.owner?.id ?? "",
+                collaborative: playlist.collaborative,
+              };
+            })
+          );
+          setTableParams((current) => ({
+            ...current,
+            pagination: {
+              ...current.pagination,
+              total: page.total,
+            },
+          }));
+        } else {
+          setDataSource([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // tableParams is read through its serialised key.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(tableParams), sdk]);
 
@@ -164,6 +185,7 @@ const Playlists: React.FC = () => {
             setplaylistName(record.name);
             setplaylistKey(record.key);
             setsnapshotId(record.snapshotId);
+            setPlaylistOwner(record.ownerId, record.collaborative);
           },
         };
       }}
