@@ -21,7 +21,7 @@ describe("songsFromPlaylistItems", () => {
 
     expect(songs).toEqual([
       {
-        key: "track-1",
+        key: "0:track-1",
         originalIndex: 0,
         name: "From item",
         artistName: "Ada",
@@ -34,5 +34,23 @@ describe("songsFromPlaylistItems", () => {
         lapTo: 0,
       },
     ]);
+  });
+
+  it("keeps the Spotify index when an entry is missing and separates repeated tracks", () => {
+    const track = {
+      id: "same",
+      name: "Repeat",
+      duration_ms: 1_000,
+      artists: [{ name: "Ada" }],
+      album: { name: "Hills", images: [] },
+    };
+    const songs = songsFromPlaylistItems([
+      { item: track },
+      { item: null },
+      { item: track },
+    ]);
+
+    expect(songs.map((song) => song.key)).toEqual(["0:same", "2:same"]);
+    expect(songs.map((song) => song.originalIndex)).toEqual([0, 2]);
   });
 });

@@ -11,6 +11,7 @@ import {
   type UserProfile,
 } from "@spotify/web-api-ts-sdk";
 import { isFixturesMode } from "../fixtures/playlist";
+import { isStalePkceError, STALE_PKCE_MESSAGE, stalePkceRecovery } from "./pkce";
 import { isSpotifyRedirectUri } from "./redirect";
 import { RUNIFLY_SPOTIFY_SCOPES, SPOTIFY_SCOPE_STORAGE_KEY } from "./scopes";
 
@@ -27,12 +28,9 @@ const SpotifyAuthContext = createContext<SpotifyAuthState | undefined>(
 let pendingSdk: Promise<SpotifyApi | null> | null = null;
 
 function toAuthError(error: unknown): Error {
-  const message = error instanceof Error ? error.message : "Spotify sign-in failed.";
-  if (message.includes("No verifier found in cache")) {
-    return new Error("Spotify sign-in was interrupted. Reload the page to try again.");
-  }
+  if (isStalePkceError(error)) return new Error(STALE_PKCE_MESSAGE);
   if (error instanceof Error) return error;
-  return new Error(message);
+  return new Error("Spotify sign-in failed.");
 }
 
 /**
@@ -49,7 +47,7 @@ function loadSdk(): Promise<SpotifyApi | null> {
   return pendingSdk;
 }
 
-async function authenticateSdk(): Promise<SpotifyApi | null> {
+async function authenticateSdk(retryStaleCallback = true): Promise<SpotifyApi | null> {
   const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
   const redirectUrl = import.meta.env.VITE_REDIRECT_TARGET;
   if (!clientId) {
@@ -71,9 +69,19 @@ async function authenticateSdk(): Promise<SpotifyApi | null> {
     window.localStorage.setItem(SPOTIFY_SCOPE_STORAGE_KEY, scopeMarker);
   }
 
-  const result = await sdk.authenticate();
-  if (!result.authenticated) return null;
-  return sdk;
+  try {
+    const result = await sdk.authenticate();
+    if (!result.authenticated) return null;
+    return sdk;
+  } catch (error) {
+    if (!retryStaleCallback || !isStalePkceError(error)) throw error;
+    const recovery = stalePkceRecovery(error, window.location.href);
+    if (!recovery || recovery.href === window.location.href) {
+      throw new Error(recovery?.message ?? "Spotify sign-in expired.");
+    }
+    window.history.replaceState({}, document.title, recovery.href);
+    return authenticateSdk(false);
+  }
 }
 
 export function SpotifyAuthProvider({ children }: { children: ReactNode }) {

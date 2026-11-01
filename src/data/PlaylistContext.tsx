@@ -107,10 +107,10 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   };
 
   const sync = async () => {
-    const nextSnapshotId = await updateData(songs);
-    if (!nextSnapshotId) return;
-    setsnapshotId(nextSnapshotId);
-    setsyncRequired(false);
+    const result = await updateData(songs);
+    if (!result) return;
+    if (result.snapshotId) setsnapshotId(result.snapshotId);
+    if (result.complete) setsyncRequired(false);
   };
 
   useEffect(() => {

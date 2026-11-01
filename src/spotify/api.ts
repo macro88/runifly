@@ -24,6 +24,19 @@ export class SpotifyRequestError extends Error {
   }
 }
 
+/** A later PUT failed after Spotify had already saved earlier moves. */
+export class PlaylistReorderInterrupted extends Error {
+  readonly snapshotId: string;
+  readonly appliedMoves: number;
+
+  constructor(snapshotId: string, appliedMoves: number) {
+    super("Spotify saved only part of the new order. Sync again to finish it.");
+    this.name = "PlaylistReorderInterrupted";
+    this.snapshotId = snapshotId;
+    this.appliedMoves = appliedMoves;
+  }
+}
+
 export interface SpotifyPlaylistTrack {
   id: string;
   name: string;
@@ -75,11 +88,36 @@ export function playlistItemsBlocked(
 
 export function playlistFailureMessage(error: unknown): string | null {
   if (error == null) return null;
-  if (error instanceof PlaylistAccessError || error instanceof SpotifyRequestError) {
+  if (
+    error instanceof PlaylistAccessError ||
+    error instanceof SpotifyRequestError ||
+    error instanceof PlaylistReorderInterrupted
+  ) {
     return error.message;
   }
   if (error instanceof Error && error.message) return error.message;
   return "Couldn't load songs from Spotify.";
+}
+
+/** Stable per occurrence. The same track can appear twice in one playlist. */
+export function trackOccurrenceKey(trackId: string, index: number): string {
+  return `${index}:${trackId}`;
+}
+
+export function gapSlotKey(index: number): string {
+  return `gap:${index}`;
+}
+
+export function isGapSlot(key: string): boolean {
+  return key.startsWith("gap:");
+}
+
+export function slotKeysFromEntries(
+  entries: readonly { item: { id: string } | null }[]
+): string[] {
+  return entries.map((entry, index) =>
+    entry.item ? trackOccurrenceKey(entry.item.id, index) : gapSlotKey(index)
+  );
 }
 
 function isPlaylistTrack(value: unknown): value is SpotifyPlaylistTrack {
@@ -179,28 +217,142 @@ export async function fetchAllPlaylistItems(
   return collected;
 }
 
+function sameOrder(left: readonly number[], right: readonly number[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+/** Spotify's insert_before counts the playlist before the removal. */
+export function applyPlaylistMove<T>(
+  items: readonly T[],
+  move: PlaylistItemMove
+): T[] {
+  const next = items.slice();
+  const removed = next.splice(move.rangeStart, move.rangeLength);
+  let insertAt = move.insertBefore;
+  if (move.rangeStart < move.insertBefore) {
+    insertAt -= removed.length;
+  }
+  next.splice(insertAt, 0, ...removed);
+  return next;
+}
+
+export function applyPlaylistMoves<T>(
+  items: readonly T[],
+  moves: readonly PlaylistItemMove[]
+): T[] {
+  return moves.reduce<T[]>(
+    (order, move) => applyPlaylistMove(order, move),
+    items.slice()
+  );
+}
+
+function blockMove(
+  from: number,
+  len: number,
+  finalDest: number,
+  length: number
+): PlaylistItemMove | null {
+  if (len <= 0 || from === finalDest) return null;
+  if (from < 0 || finalDest < 0 || from + len > length || finalDest + len > length) {
+    return null;
+  }
+  const insertBefore = from < finalDest ? finalDest + len : finalDest;
+  return { rangeStart: from, insertBefore, rangeLength: len };
+}
+
+/** One contiguous move that turns `order` into `desired`, if a single drag can. */
+function findSolvingMove(
+  order: readonly number[],
+  desired: readonly number[]
+): PlaylistItemMove | null {
+  const positionInDesired = new Map(desired.map((value, index) => [value, index]));
+  let best: PlaylistItemMove | null = null;
+
+  for (let from = 0; from < order.length; from++) {
+    const finalDest = positionInDesired.get(order[from]);
+    if (finalDest === undefined) return null;
+    let len = 1;
+    while (from + len < order.length) {
+      const nextDest = positionInDesired.get(order[from + len]);
+      if (nextDest !== finalDest + len) break;
+      len += 1;
+    }
+    if (finalDest === from) continue;
+    const move = blockMove(from, len, finalDest, order.length);
+    if (!move) continue;
+    if (!sameOrder(applyPlaylistMove(order, move), desired)) continue;
+    if (!best || move.rangeLength < best.rangeLength) best = move;
+  }
+
+  return best;
+}
+
 /**
- * Moves that turn playlist order 0..n-1 into `desired`, one Spotify reorder at a time.
- * Each move is applied to the playlist produced by the previous move.
- * Walking from the start only moves an item upward, so `insert_before` is the target index.
+ * Moves that turn playlist order 0..n-1 into `desired`.
+ * A single dragged item, in either direction, is one request.
+ * Anything else is applied one step at a time against the order so far.
  */
 export function planSerialReorders(desired: readonly number[]): PlaylistItemMove[] {
-  const current = desired.map((_, index) => index);
-  const moves: PlaylistItemMove[] = [];
+  const length = desired.length;
+  if (new Set(desired).size !== length || desired.some((value) => value < 0 || value >= length)) {
+    throw new Error("Playlist reorder is missing a song.");
+  }
 
-  for (let target = 0; target < desired.length; target++) {
-    const wanted = desired[target];
-    const from = current.indexOf(wanted);
-    if (from === -1) {
+  const order = desired.map((_, index) => index);
+  const moves: PlaylistItemMove[] = [];
+  let steps = 0;
+
+  while (!sameOrder(order, desired)) {
+    if (steps++ > length) {
       throw new Error("Playlist reorder is missing a song.");
     }
-    if (from === target) continue;
-    moves.push({ rangeStart: from, insertBefore: target, rangeLength: 1 });
-    const [item] = current.splice(from, 1);
-    current.splice(target, 0, item);
+    const solving = findSolvingMove(order, desired);
+    if (solving) {
+      moves.push(solving);
+      return moves;
+    }
+    const mismatch = order.findIndex((value, index) => value !== desired[index]);
+    const from = order.indexOf(desired[mismatch]);
+    const step = blockMove(from, 1, mismatch, order.length);
+    if (!step) throw new Error("Playlist reorder is missing a song.");
+    moves.push(step);
+    const next = applyPlaylistMove(order, step);
+    order.splice(0, order.length, ...next);
   }
 
   return moves;
+}
+
+function placeVisibleSongs(slots: readonly string[], visibleKeys: readonly string[]): string[] {
+  const currentVisible = new Set(slots.filter((key) => !isGapSlot(key)));
+  const wanted = new Set(visibleKeys);
+  if (
+    currentVisible.size !== visibleKeys.length ||
+    wanted.size !== visibleKeys.length ||
+    visibleKeys.some((key) => !currentVisible.has(key))
+  ) {
+    throw new Error("Playlist reorder is missing a song.");
+  }
+  let cursor = 0;
+  return slots.map((slot) => (isGapSlot(slot) ? slot : visibleKeys[cursor++]));
+}
+
+/**
+ * Reorder the full playlist, including unavailable entries, into the visible order.
+ * Gap slots stay in their places. Indexes passed to Spotify are positions in that full list.
+ */
+export function planPlaylistReorder(
+  slots: readonly string[],
+  visibleKeys: readonly string[]
+): PlaylistItemMove[] {
+  const desiredSlots = placeVisibleSongs(slots, visibleKeys);
+  const indexByKey = new Map(slots.map((key, index) => [key, index]));
+  const desired = desiredSlots.map((key) => {
+    const index = indexByKey.get(key);
+    if (index === undefined) throw new Error("Playlist reorder is missing a song.");
+    return index;
+  });
+  return planSerialReorders(desired);
 }
 
 interface SnapshotBody {
@@ -220,27 +372,34 @@ export async function reorderPlaylistItems(
   fetchImpl: FetchLike = fetch
 ): Promise<string> {
   let snapshot = snapshotId;
+  let applied = 0;
   const url = `${SPOTIFY_ROOT}/playlists/${encodeURIComponent(playlistId)}/items`;
 
   for (const move of moves) {
-    const payload = await spotifyRequest(
-      fetchImpl,
-      url,
-      accessToken,
-      "PUT",
-      JSON.stringify({
-        range_start: move.rangeStart,
-        insert_before: move.insertBefore,
-        range_length: move.rangeLength,
-        snapshot_id: snapshot,
-      }),
-      PLAYLIST_REORDER_ACCESS_MESSAGE
-    );
-    const next = (payload as SnapshotBody | null)?.snapshot_id;
-    if (typeof next !== "string" || next.length === 0) {
-      throw new SpotifyRequestError(200);
+    try {
+      const payload = await spotifyRequest(
+        fetchImpl,
+        url,
+        accessToken,
+        "PUT",
+        JSON.stringify({
+          range_start: move.rangeStart,
+          insert_before: move.insertBefore,
+          range_length: move.rangeLength,
+          snapshot_id: snapshot,
+        }),
+        PLAYLIST_REORDER_ACCESS_MESSAGE
+      );
+      const next = (payload as SnapshotBody | null)?.snapshot_id;
+      if (typeof next !== "string" || next.length === 0) {
+        throw new SpotifyRequestError(200);
+      }
+      snapshot = next;
+      applied += 1;
+    } catch (error) {
+      if (applied === 0) throw error;
+      throw new PlaylistReorderInterrupted(snapshot, applied);
     }
-    snapshot = next;
   }
 
   return snapshot;

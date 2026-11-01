@@ -3,10 +3,15 @@ import { fixtureSongRows, isFixturesMode } from "../fixtures/playlist";
 import {
   PLAYLIST_ITEMS_ACCESS_MESSAGE,
   PlaylistAccessError,
+  PlaylistReorderInterrupted,
+  applyPlaylistMoves,
   fetchAllPlaylistItems,
-  planSerialReorders,
+  planPlaylistReorder,
   playlistItemsBlocked,
   reorderPlaylistItems,
+  slotKeysFromEntries,
+  trackOccurrenceKey,
+  type PlaylistItemMove,
   type PlaylistItemPageEntry,
 } from "../spotify/api";
 import { useSpotifyAuth } from "../spotify/auth";
@@ -26,17 +31,22 @@ export interface RuniflySong {
   lapTo: number;
 }
 
+export interface PlaylistWriteResult {
+  snapshotId: string | undefined;
+  complete: boolean;
+}
+
 export function songsFromPlaylistItems(
   entries: PlaylistItemPageEntry[]
 ): RuniflySong[] {
   const songs: RuniflySong[] = [];
-  for (const entry of entries) {
+  entries.forEach((entry, index) => {
     const track = entry.item;
-    if (!track) continue;
+    if (!track) return;
     const artists = Array.isArray(track.artists) ? track.artists : [];
     songs.push({
-      key: track.id,
-      originalIndex: songs.length,
+      key: trackOccurrenceKey(track.id, index),
+      originalIndex: index,
       name: track.name,
       artistName: artists[0]?.name ?? "",
       albumName: track.album?.name ?? "",
@@ -47,7 +57,7 @@ export function songsFromPlaylistItems(
       lapFrom: 0,
       lapTo: 0,
     });
-  }
+  });
   return songs;
 }
 
@@ -59,29 +69,34 @@ export function useRuniflyPlaylist(
 ) {
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<RuniflySong[]>([]);
+  const [slots, setSlots] = useState<string[]>([]);
   const [error, setError] = useState<unknown>();
   const { sdk, profile } = useSpotifyAuth();
 
+  function remember(songs: RuniflySong[], slotKeys: string[]) {
+    setData(songs);
+    setSlots(slotKeys);
+  }
+
   async function updateData(
     newData: RuniflySong[]
-  ): Promise<string | undefined> {
+  ): Promise<PlaylistWriteResult | undefined> {
     if (playlistKey === undefined) return;
     if (isFixturesMode()) {
-      setData(newData);
+      remember(newData, newData.map((song) => song.key));
       setError(undefined);
-      return snapshotId;
+      return { snapshotId, complete: true };
     }
 
-    const originalPositions = new Map(
-      data.map((song, index) => [song.key, index])
-    );
-    const desired = newData.map((song) => originalPositions.get(song.key));
-    if (desired.some((position) => position === undefined)) {
-      setError(new Error("Playlist reorder is missing a song."));
+    const visibleKeys = newData.map((song) => song.key);
+    let moves: PlaylistItemMove[];
+    try {
+      moves = planPlaylistReorder(slots, visibleKeys);
+    } catch (reorderError) {
+      setError(reorderError);
       return;
     }
 
-    const moves = planSerialReorders(desired as number[]);
     if (!sdk) {
       setError(new Error("Spotify is not signed in."));
       return;
@@ -101,12 +116,17 @@ export function useRuniflyPlaylist(
         moves,
         snapshotId ?? ""
       );
-      setData(newData);
-      return nextSnapshot;
+      remember(newData, applyPlaylistMoves(slots, moves));
+      return { snapshotId: nextSnapshot, complete: true };
     } catch (reorderError) {
       console.error(reorderError);
+      if (reorderError instanceof PlaylistReorderInterrupted) {
+        setSlots(applyPlaylistMoves(slots, moves.slice(0, reorderError.appliedMoves)));
+        setError(reorderError);
+        return { snapshotId: reorderError.snapshotId, complete: false };
+      }
       setError(reorderError);
-      return undefined;
+      return;
     } finally {
       setLoading(false);
     }
@@ -121,14 +141,15 @@ export function useRuniflyPlaylist(
 
       try {
         if (isFixturesMode()) {
+          const rows = playlistKey === undefined ? [] : fixtureSongRows();
           setError(undefined);
-          setData(playlistKey === undefined ? [] : fixtureSongRows());
+          remember(rows, rows.map((song) => song.key));
           return;
         }
 
         if (playlistKey === undefined || !activeSdk) {
           setError(undefined);
-          setData([]);
+          remember([], []);
           return;
         }
 
@@ -146,11 +167,11 @@ export function useRuniflyPlaylist(
         const token = await requireAccessToken(activeSdk);
         const entries = await fetchAllPlaylistItems(playlistKey, token);
         if (cancelled) return;
-        setData(songsFromPlaylistItems(entries));
+        remember(songsFromPlaylistItems(entries), slotKeysFromEntries(entries));
       } catch (loadError) {
         console.error(loadError);
         if (cancelled) return;
-        setData([]);
+        remember([], []);
         setError(loadError);
       } finally {
         if (!cancelled) setLoading(false);

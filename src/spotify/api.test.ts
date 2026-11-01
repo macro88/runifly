@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   PLAYLIST_ITEMS_ACCESS_MESSAGE,
   PlaylistAccessError,
+  PlaylistReorderInterrupted,
+  applyPlaylistMove,
+  applyPlaylistMoves,
   fetchAllPlaylistItems,
+  planPlaylistReorder,
   planSerialReorders,
   playlistItemTotal,
   playlistItemsBlocked,
   reorderPlaylistItems,
-  type PlaylistItemMove,
 } from "./api";
 import { isSpotifyRedirectUri } from "./redirect";
 
@@ -28,18 +31,6 @@ function track(id: string, name: string) {
 
 function header(init: RequestInit | undefined, name: string): string | null {
   return new Headers(init?.headers).get(name);
-}
-
-/** Spotify counts insert_before on the playlist before the removal. */
-function applySpotifyReorder(items: number[], move: PlaylistItemMove): number[] {
-  const next = items.slice();
-  const removed = next.splice(move.rangeStart, move.rangeLength);
-  let insertAt = move.insertBefore;
-  if (move.rangeStart < move.insertBefore) {
-    insertAt -= removed.length;
-  }
-  next.splice(insertAt, 0, ...removed);
-  return next;
 }
 
 describe("fetchAllPlaylistItems", () => {
@@ -201,10 +192,96 @@ describe("planSerialReorders", () => {
     for (const desired of desiredSets) {
       let order = desired.map((_, index) => index);
       for (const move of planSerialReorders(desired)) {
-        order = applySpotifyReorder(order, move);
+        order = applyPlaylistMove(order, move);
       }
       expect(order).toEqual(desired);
     }
+  });
+});
+
+describe("planSerialReorders single drag", () => {
+  it("moves the first song to the end in one request", () => {
+    const desired = [1, 2, 3, 4, 5, 6, 7, 0];
+    const moves = planSerialReorders(desired);
+    expect(moves).toEqual([
+      { rangeStart: 0, insertBefore: 8, rangeLength: 1 },
+    ]);
+    expect(applyPlaylistMoves([0, 1, 2, 3, 4, 5, 6, 7], moves)).toEqual(desired);
+  });
+
+  it("moves the last song to the start in one request", () => {
+    const desired = [3, 0, 1, 2];
+    const moves = planSerialReorders(desired);
+    expect(moves).toEqual([
+      { rangeStart: 3, insertBefore: 0, rangeLength: 1 },
+    ]);
+    expect(applyPlaylistMoves([0, 1, 2, 3], moves)).toEqual(desired);
+  });
+});
+
+describe("planPlaylistReorder", () => {
+  it("moves the real track when an unavailable entry sits between songs", () => {
+    const slots = ["0:a", "gap:1", "2:b"];
+    const moves = planPlaylistReorder(slots, ["2:b", "0:a"]);
+    const order = applyPlaylistMoves(slots, moves);
+
+    expect(order.filter((key) => !key.startsWith("gap:"))).toEqual(["2:b", "0:a"]);
+    expect(order).toContain("gap:1");
+    expect(moves[0]?.rangeStart).not.toBe(1);
+    expect(applyPlaylistMove(slots, moves[0])).not.toEqual(["gap:1", "0:a", "2:b"]);
+  });
+
+  it("reorders two copies of the same track independently", () => {
+    const slots = ["0:same", "1:same"];
+    const moves = planPlaylistReorder(slots, ["1:same", "0:same"]);
+    expect(applyPlaylistMoves(slots, moves)).toEqual(["1:same", "0:same"]);
+  });
+});
+
+describe("reorderPlaylistItems partial failure", () => {
+  it("keeps the saved snapshot and lets a retry finish from that order", async () => {
+    const slots = ["a", "b", "c", "d"];
+    const desired = ["d", "c", "b", "a"];
+    const moves = planPlaylistReorder(slots, desired);
+    expect(moves.length).toBeGreaterThan(1);
+
+    let calls = 0;
+    const fetchImpl: typeof fetch = async () => {
+      calls += 1;
+      if (calls === 1) return jsonResponse({ snapshot_id: "snap-b" });
+      return new Response("no", { status: 500 });
+    };
+
+    const error = await reorderPlaylistItems(
+      "playlist-1",
+      "token-1",
+      moves,
+      "snap-a",
+      fetchImpl
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(PlaylistReorderInterrupted);
+    const interrupted = error as PlaylistReorderInterrupted;
+    expect(interrupted.snapshotId).toBe("snap-b");
+    expect(interrupted.appliedMoves).toBe(1);
+    expect(calls).toBe(2);
+
+    const partial = applyPlaylistMoves(slots, moves.slice(0, interrupted.appliedMoves));
+    const rest = planPlaylistReorder(partial, desired);
+    expect(applyPlaylistMoves(partial, rest)).toEqual(desired);
+
+    const retryBodies: string[] = [];
+    await reorderPlaylistItems(
+      "playlist-1",
+      "token-1",
+      rest,
+      interrupted.snapshotId,
+      async (_input, init) => {
+        retryBodies.push(String(init?.body));
+        return jsonResponse({ snapshot_id: "snap-c" });
+      }
+    );
+    expect(JSON.parse(retryBodies[0]).snapshot_id).toBe("snap-b");
   });
 });
 
