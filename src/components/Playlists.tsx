@@ -10,6 +10,13 @@ import { useSpotify } from "../hooks/useSpotify";
 import { Avatar, Space, Table, Typography } from "antd";
 import { ColumnsType, TablePaginationConfig, TableProps } from "antd/es/table";
 import { usePlaylistContext } from "../data/PlaylistContext";
+import {
+  FIXTURE_PLAYLIST_DESCRIPTION,
+  FIXTURE_PLAYLIST_KEY,
+  FIXTURE_PLAYLIST_NAME,
+  FIXTURE_TRACKS,
+  isFixturesMode,
+} from "../fixtures/playlist";
 
 interface DataType {
   key: string;
@@ -103,7 +110,24 @@ const Playlists: React.FC = () => {
   };
 
   useEffect(() => {
+    if (isFixturesMode()) {
+      setDataSource([
+        {
+          key: FIXTURE_PLAYLIST_KEY,
+          name: FIXTURE_PLAYLIST_NAME,
+          description: FIXTURE_PLAYLIST_DESCRIPTION,
+          snapshotId: "fixture-snapshot",
+          image: undefined,
+          songs: FIXTURE_TRACKS.length,
+        },
+      ]);
+      setLoading(false);
+      return;
+    }
+
     fetchData();
+    // fetchData closes over the latest params. The serialised key is the dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(tableParams), sdk]);
 
   const handleTableChange: TableProps["onChange"] = (

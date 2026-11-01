@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic course for Runifly verification. Not a recorded trace.
+  One track, one segment, five points, each a kilometre due north of the
+  last on a sphere of radius 6371008.8 m (src/utils/gpxUtils.tsx).
+  Elevation stays at 30 m for the first two kilometres, then climbs to
+  180 m. Licence-free: generated for this repository, not copied from a
+  published route.
+-->
+<gpx version="1.1" creator="runifly-fixtures" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Fixture Climb</name>
+    <trkseg>
+      <trkpt lat="51.500000000000" lon="-0.120000000000"><ele>30</ele></trkpt>
+      <trkpt lat="51.508993203637" lon="-0.120000000000"><ele>30</ele></trkpt>
+      <trkpt lat="51.517986407274" lon="-0.120000000000"><ele>30</ele></trkpt>
+      <trkpt lat="51.526979610912" lon="-0.120000000000"><ele>180</ele></trkpt>
+      <trkpt lat="51.535972814549" lon="-0.120000000000"><ele>180</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -3,6 +3,7 @@ import { useSpotify } from "../hooks/useSpotify";
 import { Scopes, UserProfile } from "@spotify/web-api-ts-sdk";
 import { Avatar, Space } from "antd";
 import { UserOutlined } from "@ant-design/icons";
+import { isFixturesMode } from "../fixtures/playlist";
 
 const SpotifyUser = () => {
   const sdk = useSpotify(
@@ -19,6 +20,15 @@ const SpotifyUser = () => {
       setProfileData(results); // Update the state variable with profile data
     })();
   }, [sdk]);
+
+  if (isFixturesMode()) {
+    return (
+      <Space>
+        <Avatar shape="square" icon={<UserOutlined />} />
+        Fixtures
+      </Space>
+    );
+  }
 
   return (
     <Space>
