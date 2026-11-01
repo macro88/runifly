@@ -57,6 +57,8 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
   );
 };
 
+// Hook lives next to its provider.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCourseContext = () => {
   const context = useContext(CourseContext);
   if (context === undefined) {

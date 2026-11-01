@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Verification evidence. The skill writes this and cleanup must leave it.
+.cursor/skills/verify-runifly/evidence/

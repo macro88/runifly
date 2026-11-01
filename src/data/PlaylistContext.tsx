@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { RuniflySong, useRuniflyPlaylist } from "../hooks/useSpotifyPlaylist";
 import { useCourseContext } from "./CourseContext";
+import { updateTimingData } from "./timing";
 
 interface PlaylistContextType {
   playlistKey: string | undefined;
@@ -70,18 +71,6 @@ interface PlaylistProviderProps {
   children: ReactNode;
 }
 
-const updateTimingData = (songs: RuniflySong[], pace: number) => {
-  let cumlTime = 0;
-
-  songs.forEach((song) => {
-    song.raceTimeFrom = parseFloat(cumlTime.toFixed(2));
-    song.raceTimeTo = parseFloat((cumlTime + song.songDuration).toFixed(2));
-    song.lapFrom = parseFloat((song.raceTimeFrom / pace).toFixed(2));
-    song.lapTo = parseFloat((song.raceTimeTo / pace).toFixed(2));
-    cumlTime += song.songDuration;
-  });
-};
-
 export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   children,
 }) => {
@@ -109,15 +98,13 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   useEffect(() => {
     console.log("PlaylistProvider: useEffect");
     if (data) {
-      updateTimingData(data, pace);
-      setSongs(data);
+      setSongs(updateTimingData(data, pace));
     }
   }, [data, pace]);
 
   const updateSongOrder = (newSongs: RuniflySong[]) => {
     setsyncRequired(true);
-    setSongs(newSongs);
-    updateTimingData(newSongs, pace);
+    setSongs(updateTimingData(newSongs, pace));
   };
 
   const reset = () => {
@@ -158,6 +145,8 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   );
 };
 
+// Hook lives next to its provider.
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePlaylistContext = () => {
   const context = useContext(PlaylistContext);
   if (context === undefined) {
