@@ -106,6 +106,10 @@ These are known bugs and are not asserted, on purpose:
 - `createFakeGpx` adds the fractional kilometre in kilometres onto a metre total. The journey replaces that fake course by loading the sample. Do not assert the fake course.
 - A single-point GPX, or a GPX with more than one track segment, throws today (`trkpt.map` / `trkseg.trkpt` when the parser does not produce arrays). The sample is one track, one segment, five points so this journey can load it. When that crash is fixed, add a journey. Do not weaken this one to hide the crash.
 
+## Scores
+
+[AGENTS.md](../../../AGENTS.md) at the repository root requires `yarn verify` on every change, and forbids lowering the react-doctor or aislop score. This skill is the verify half. Also run `yarn doctor` and `yarn aislop`. Those two commands report scores and do not gate this pass line.
+
 ## Maintenance
 
 When the app changes, run `/maintain-verification-skill` so the feature map stays honest. That pass edits only this skill directory. A product regression is reported, not written out of the map.
