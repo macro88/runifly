@@ -38,7 +38,7 @@ The helper builds, then starts Vite preview itself. Do not start a second server
 4. `yarn preview --host 127.0.0.1 --port $VERIFY_PORT --strictPort`. `VERIFY_PORT` defaults to `4173`. If that port is already taken, the helper stops and tells you to pick another. It does not kill the existing process.
 5. Ready means `GET http://127.0.0.1:$VERIFY_PORT/?fixtures=1` returns HTTP 200 and the body contains `id="root"`. Preview logs go to `.cursor/skills/verify-runifly/evidence/preview.log`.
 
-Open the app only at `/?fixtures=1`. Without that query the three `useSpotify` effects start PKCE and the browser is sent to `accounts.spotify.com`. The helper aborts any request whose host is not `127.0.0.1` or `localhost` and fails the run if one was attempted.
+Open the app only at `/?fixtures=1`. Without that query the shared Spotify auth effect starts PKCE and the browser is sent to `accounts.spotify.com`. The helper aborts any request whose host is not `127.0.0.1` or `localhost` and fails the run if one was attempted.
 
 Two verifications need two ports. Set `VERIFY_PORT` on the second. Never drive a preview this run did not start.
 

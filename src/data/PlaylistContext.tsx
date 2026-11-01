@@ -8,6 +8,7 @@ import React, {
   SetStateAction,
 } from "react";
 import { RuniflySong, useRuniflyPlaylist } from "../hooks/useSpotifyPlaylist";
+import { playlistFailureMessage } from "../spotify/api";
 import { useCourseContext } from "./CourseContext";
 import { updateTimingData } from "./timing";
 
@@ -17,6 +18,8 @@ interface PlaylistContextType {
 
   snapshotId: string | undefined;
   setsnapshotId: (snapshotId: string | undefined) => void;
+
+  setPlaylistOwner: (ownerId: string | undefined, collaborative: boolean) => void;
 
   playlistName: string | undefined;
   setplaylistName: (playlistName: string | undefined) => void;
@@ -30,6 +33,7 @@ interface PlaylistContextType {
   reset: () => void;
 
   loading: boolean;
+  playlistError: string | null;
 
   syncRequired: boolean;
   setsyncRequired: (syncRequired: boolean) => void;
@@ -51,6 +55,7 @@ const PlaylistContext = createContext<PlaylistContextType>({
   setplaylistKey: () => {},
   snapshotId: undefined,
   setsnapshotId: () => {},
+  setPlaylistOwner: () => {},
   playlistName: defaultValues.playlistName,
   setplaylistName: () => {},
   playlistImage: undefined,
@@ -59,6 +64,7 @@ const PlaylistContext = createContext<PlaylistContextType>({
   sethoveredSong: () => {},
   reset: () => {},
   loading: false,
+  playlistError: null,
   syncRequired: false,
   setsyncRequired: () => {},
   songs: [],
@@ -78,21 +84,33 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   const [playlistName, setplaylistName] = useState<string>();
   const [playlistImage, setplaylistImage] = useState<string>();
   const [snapshotId, setsnapshotId] = useState<string | undefined>();
+  const [playlistOwnerId, setPlaylistOwnerId] = useState<string | undefined>();
+  const [playlistCollaborative, setPlaylistCollaborative] = useState(false);
   const [hoveredSong, sethoveredSong] = useState<RuniflySong>();
   const [syncRequired, setsyncRequired] = useState<boolean>(false);
   const [songs, setSongs] = useState<RuniflySong[]>([]);
-  const { pace, distance } = useCourseContext();
+  const { pace } = useCourseContext();
 
   const { data, error, loading, updateData } = useRuniflyPlaylist(
     playlistKey,
-    pace,
-    distance
+    snapshotId,
+    playlistOwnerId,
+    playlistCollaborative
   );
 
+  const setPlaylistOwner = (
+    ownerId: string | undefined,
+    collaborative: boolean
+  ) => {
+    setPlaylistOwnerId(ownerId);
+    setPlaylistCollaborative(collaborative);
+  };
+
   const sync = async () => {
-    const snapshotId = await updateData(songs);
-    setsnapshotId(snapshotId);
-    setsyncRequired(false);
+    const result = await updateData(songs);
+    if (!result) return;
+    if (result.snapshotId) setsnapshotId(result.snapshotId);
+    if (result.complete) setsyncRequired(false);
   };
 
   useEffect(() => {
@@ -114,6 +132,9 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     setsyncRequired(false);
     setplaylistImage(undefined);
     setplaylistName(defaultValues.playlistName);
+    setsnapshotId(undefined);
+    setPlaylistOwnerId(undefined);
+    setPlaylistCollaborative(false);
   };
 
   const value = {
@@ -124,8 +145,8 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     playlistName,
     playlistImage,
     songs,
-    error,
     loading,
+    playlistError: playlistFailureMessage(error),
     setplaylistKey,
     sethoveredSong,
     reset,
@@ -135,6 +156,7 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     setplaylistName,
     setplaylistImage,
     setsnapshotId,
+    setPlaylistOwner,
     sync,
   };
 

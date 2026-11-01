@@ -7,12 +7,14 @@ import SpotifyUser from "./components/SpotifyUser";
 import { PlaylistProvider } from "./data/PlaylistContext";
 import { ThemeProvider } from "./data/ThemeContext";
 import DarkModeToggle from "./components/DarkModeToggle";
+import { SpotifyAuthProvider } from "./spotify/auth";
 
 function App() {
   return (
     <ThemeProvider>
       <CourseProvider>
-        <PlaylistProvider>
+        <SpotifyAuthProvider>
+          <PlaylistProvider>
           <Layout style={{ minHeight: "100vh" }}>
             <Header
               style={{
@@ -33,7 +35,8 @@ function App() {
 
             <Footer>©{new Date().getFullYear()} Created with &hearts;</Footer>
           </Layout>
-        </PlaylistProvider>
+          </PlaylistProvider>
+        </SpotifyAuthProvider>
       </CourseProvider>
     </ThemeProvider>
   );

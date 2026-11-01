@@ -1,4 +1,4 @@
-import { Col, Row, Space, Typography, Image, Layout, theme } from "antd";
+import { Alert, Col, Row, Space, Typography, Image, Layout, theme } from "antd";
 import React from "react";
 import TargetTimePace from "./TargetTimePace";
 import CourseViewer from "./CourseViewer";
@@ -18,7 +18,7 @@ interface PlayListManagerProps {
 
 const PlayListManager: React.FC<PlayListManagerProps> = () => {
   const { name, setName } = useCourseContext();
-  const { playlistKey, playlistImage } = usePlaylistContext();
+  const { playlistKey, playlistImage, playlistError } = usePlaylistContext();
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
@@ -81,6 +81,9 @@ const PlayListManager: React.FC<PlayListManagerProps> = () => {
           </Row>
           <Space direction="vertical" style={{ width: "100%" }}>
             {!playlistKey && <Playlists />}
+            {playlistKey && playlistError && (
+              <Alert type="warning" showIcon message={playlistError} />
+            )}
             {/* {playlistKey && <SongList />} */}
             <SongList />
           </Space>
