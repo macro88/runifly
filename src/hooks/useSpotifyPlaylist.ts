@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { fixtureSongRows, isFixturesMode } from "../fixtures/playlist";
 import { useSpotify } from "./useSpotify";
 import {
   Page,
@@ -182,10 +183,18 @@ export function useRuniflyPlaylist(
 
   useEffect(() => {
     if (spotifyData) mapData();
+    // mapData is recreated every render and only reads spotifyData.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [distance, pace, spotifyData]);
 
   useEffect(() => {
     (async () => {
+      if (isFixturesMode()) {
+        setData(playlistKey === undefined ? [] : fixtureSongRows());
+        setLoading(false);
+        return;
+      }
+
       if (playlistKey === undefined) {
         setData([]);
         return;
@@ -201,6 +210,8 @@ export function useRuniflyPlaylist(
       }
       setLoading(false);
     })();
+    // Fixtures return before the SDK. Adding sdk would refetch when auth completes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlistKey]);
 
   return { loading, data, error, updateData };

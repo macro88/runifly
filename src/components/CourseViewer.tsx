@@ -30,27 +30,32 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
     }
   };
 
+  const loadCourseFile = async (file: File) => {
+    if (!file.name.endsWith(".gpx")) {
+      console.log("Invalid file type. Only .gpx files are allowed.");
+      return;
+    }
+
+    const loadedGpx = await parseFile(file);
+    setGpx(loadedGpx);
+    setName(loadedGpx.name);
+    setDistance(Number((totalDistance(loadedGpx) / 1000).toFixed(2)));
+    if (onFileDrop) onFileDrop(file);
+  };
+
   const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
 
     const file = event.dataTransfer.files[0];
-    if (file.name.endsWith(".gpx")) {
-      const loadedGpx = await parseFile(file);
-      setGpx(loadedGpx);
-      setName(loadedGpx.name);
-      setDistance(Number((totalDistance(loadedGpx) / 1000).toFixed(2)));
-      if (onFileDrop) onFileDrop(file);
-    } else {
-      console.log("Invalid file type. Only .gpx files are allowed.");
-    }
+    if (!file) return;
+    await loadCourseFile(file);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files === null) return;
-    const file = event.target.files[0];
-    console.log(file);
-    if (onFileDrop) onFileDrop(file);
+    const file = event.target.files?.[0];
+    if (!file) return;
+    void loadCourseFile(file);
   };
 
   return (
@@ -69,6 +74,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
         style={{ display: "none" }}
         onChange={handleFileChange}
         accept=".gpx"
+        aria-label="Course GPX file"
         multiple={false}
       />
 

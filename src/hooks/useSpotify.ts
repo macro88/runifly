@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { SpotifyApi, SdkOptions, AuthorizationCodeWithPKCEStrategy } from "@spotify/web-api-ts-sdk";
+import { isFixturesMode } from "../fixtures/playlist";
 
 export function useSpotify(clientId: string, redirectUrl: string, scopes: string[], config?: SdkOptions) {
 
@@ -7,6 +8,8 @@ export function useSpotify(clientId: string, redirectUrl: string, scopes: string
     const { current: activeScopes } = useRef(scopes);
 
     useEffect(() => {
+        if (isFixturesMode()) return;
+
         (async () => {
             const auth = new AuthorizationCodeWithPKCEStrategy(clientId, redirectUrl, activeScopes);
             const internalSdk = new SpotifyApi(auth, config);

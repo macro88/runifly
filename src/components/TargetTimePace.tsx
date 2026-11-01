@@ -75,7 +75,7 @@ const TargetTimePace: React.FC<TargetTimePaceProps> = () => {
     const pace = calculatePace(inputTargetTime, distance);
     setInputPace(pace);
     setPace(pace.asSeconds());
-  }, [inputTargetTime, distance]);
+  }, [inputTargetTime, distance, setPace]);
 
   useEffect(() => {
     const time = calculateTargetTime(inputPace, distance);
@@ -87,6 +87,7 @@ const TargetTimePace: React.FC<TargetTimePaceProps> = () => {
       <Space>
         <Form.Item label="Distance (km)">
           <InputNumber
+            aria-label="Distance (km)"
             value={distance}
             min={1}
             max={500}
@@ -105,6 +106,7 @@ const TargetTimePace: React.FC<TargetTimePaceProps> = () => {
         <Form.Item label="Pace">
           <Space>
             <TimePicker
+              aria-label="Pace"
               value={dayjs(inputPace.asMilliseconds())}
               onChange={handlePaceChange}
               format="mm:ss"

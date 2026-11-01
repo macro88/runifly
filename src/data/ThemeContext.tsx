@@ -54,6 +54,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   );
 };
 
+// Hook lives next to its provider.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useThemeContext = () => {
   const context = useContext(ThemeContext);
   if (context === undefined) {
