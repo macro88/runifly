@@ -98,7 +98,7 @@ Encode today's behaviour. Do not "correct" these oracles in a verification-only 
 
 Song kilometres and race times (the Vitest expectations and the six strings in the browser output) follow today's `updateTimingData`: cumulative raw duration, `toFixed(2)` on each boundary, kilometres = that rounded boundary / pace. They do not depend on GPX geometry. A timing-fix pull request that changes rounding, the running total, or the meaning of pace must update `src/data/timing.test.ts` and the `songs` table in `scripts/verify.mjs` together. Until that formula changes, those assertions stay.
 
-These are known bugs and are not asserted, on purpose:
+The sample journey does not assert the course geometry below. Vitest covers it.
 
 - Displayed course distance (`4`) is the haversine in `src/utils/gpxUtils.tsx` (`earthRadiusMeters = 6371008.8`) of `fixtures/fixture-climb.gpx`, rounded to the nearest millimetre and shown to two decimal kilometres. It does not use `aggregateLaps`.
 - The elevation chart is plotted per lap, not per metre. Do not assert path positions, axis ticks, or the shape of the climb. The sample climbs from 30 m to 180 m between kilometres 2 and 3 in the file. The chart is not the oracle for that climb.
