@@ -1,5 +1,8 @@
 # Runifly
 
+[![aislop](https://img.shields.io/endpoint?url=https%3A%2F%2Fmacro88.github.io%2Frunifly%2Fbadges%2Faislop.json)](https://github.com/macro88/runifly/actions/workflows/build_deploy.yaml)
+[![react-doctor](https://img.shields.io/endpoint?url=https%3A%2F%2Fmacro88.github.io%2Frunifly%2Fbadges%2Freact-doctor.json)](https://github.com/macro88/runifly/actions/workflows/build_deploy.yaml)
+
 Runifly is a client-only web app for arranging a Spotify playlist against a route. A runner or hiker loads a GPX file, sets a pace, and connects Spotify. The app times the playlist against the route, so a song can be placed where it will be playing, for example a harder track for a hill.
 
 The interface is React and Ant Design, written in TypeScript and built with Vite. There is no backend. Sign-in uses Spotify's authorisation code flow with PKCE in the browser.
@@ -57,6 +60,8 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
 ## Deploy
 
 A push to `main`, or a manual run of [`.github/workflows/build_deploy.yaml`](.github/workflows/build_deploy.yaml), publishes the production build to GitHub Pages at [https://macro88.github.io/runifly/](https://macro88.github.io/runifly/). Pull requests run the quality-score job and do not deploy.
+
+That publish also writes `badges/aislop.json` and `badges/react-doctor.json` into the site. The shields at the top request those files, so the numbers are the scores from the latest publish of `main`. Green is 90 and up, yellow is 70 to 89, and red is below 70. The react-doctor badge shows error and warning counts when the score API does not return a number.
 
 The publish job installs with `yarn install --frozen-lockfile`, then runs `yarn build`. The production Vite base is `/runifly/`, so scripts, the favicon, and the Spotify callback sit under that path. There is no client-side router. Spotify returns to `https://macro88.github.io/runifly/` with query parameters, and GitHub Pages serves `index.html` for that directory. The build does not add a `404.html` copy.
 
