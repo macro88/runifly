@@ -23,9 +23,9 @@ There is no screenshot in the repository.
 
 1. Open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create an app.
 2. New apps start in development mode. The app owner needs Spotify Premium. Under the app's settings, open user management and add each person who will sign in, including yourself. The allowlist holds up to five users. Spotify rejects API calls for an account that is not on the list.
-3. Add a redirect URI. It has to be the same string as `VITE_REDIRECT_TARGET`.
-   - Local development: `http://127.0.0.1:5173`. Spotify rejects `localhost`. HTTP is accepted for a loopback address. The app does not start sign-in unless the redirect is `http://127.0.0.1:<port>` or an `https://` URL.
-   - Production: an `https://` URL for the deployed site. Register that URL as well if you use the app anywhere other than your own machine, and set `VITE_REDIRECT_TARGET` to the same value.
+3. Add a redirect URI. The app builds it from Vite's base and does not hard-code the path.
+   - Local development: `http://127.0.0.1:5173/`. Spotify rejects `localhost`. HTTP is accepted for a loopback address. The dev server base is `/`. `VITE_REDIRECT_TARGET` may be `http://127.0.0.1:5173` or the same URI with a trailing slash. Sign-in keeps that loopback host, so it still returns to port 5173 when the address bar says `localhost`. The app does not start sign-in unless the configured value is `http://127.0.0.1:<port>` or an `https://` URL.
+   - GitHub Pages: `https://macro88.github.io/runifly/`. The production base is `/runifly/`. On that site the callback is the page origin plus the base.
 4. Copy the Client ID into `.env`, as below. Leave the client secret out of the repository. PKCE does not use it, and any `VITE_` variable is compiled into the JavaScript the browser downloads.
 
 ### Environment
@@ -37,11 +37,11 @@ cp .env.example .env
 | Name | Purpose |
 | --- | --- |
 | `VITE_SPOTIFY_CLIENT_ID` | Client ID from the Spotify dashboard. |
-| `VITE_REDIRECT_TARGET` | Redirect URI registered on the Spotify app. For local development, `http://127.0.0.1:5173`. |
+| `VITE_REDIRECT_TARGET` | A Spotify-legal redirect: `http://127.0.0.1:5173` locally, or an `https://` URL for a production build. The path sent to Spotify is Vite's base, not a path typed into this variable. |
 
 `.env` is listed in `.gitignore`. The committed template is `.env.example`.
 
-The GitHub Actions workflow that publishes `main` supplies `VITE_SPOTIFY_CLIENT_ID` from a repository secret and `VITE_REDIRECT_TARGET` from a repository variable at build time. That build does not read `.env`. The variable needs to be the HTTPS URL registered with Spotify.
+The GitHub Actions workflow that publishes `main` supplies `VITE_SPOTIFY_CLIENT_ID` from a repository secret and `VITE_REDIRECT_TARGET` from a repository variable at build time. That build does not read `.env`. The variable has to be an `https://` URL. On the published site the callback is still `https://macro88.github.io/runifly/`, from the page origin and the `/runifly/` base.
 
 ### Install and run
 
@@ -52,7 +52,20 @@ yarn dev --host 127.0.0.1 --port 5173 --strictPort
 
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
-`yarn dev` with no extra flags starts Vite 5.0.12 on port 5173 and prints `http://localhost:5173/`. That process listens on localhost. Spotify rejects `localhost` as a redirect URI, and a connection to `http://127.0.0.1:5173` is refused while the server is bound that way. `--host 127.0.0.1` makes Vite serve `http://127.0.0.1:5173/`, which matches `VITE_REDIRECT_TARGET`. `--strictPort` makes Vite exit when 5173 is already taken, so the redirect URI stays on that port.
+`yarn dev` with no extra flags starts Vite 5.0.12 on port 5173 and prints `http://localhost:5173/`. That process listens on localhost. Spotify rejects `localhost` as a redirect URI, and a connection to `http://127.0.0.1:5173` is refused while the server is bound that way. `--host 127.0.0.1` makes Vite serve `http://127.0.0.1:5173/`. The dev base is `/`, so the redirect URI is `http://127.0.0.1:5173/` when `VITE_REDIRECT_TARGET` names that loopback origin. `--strictPort` makes Vite exit when 5173 is already taken, so the redirect URI stays on that port.
+
+## Deploy
+
+A push to `main`, or a manual run of [`.github/workflows/build_deploy.yaml`](.github/workflows/build_deploy.yaml), publishes the production build to GitHub Pages at [https://macro88.github.io/runifly/](https://macro88.github.io/runifly/). Pull requests run the quality-score job and do not deploy.
+
+The publish job installs with `yarn install --frozen-lockfile`, then runs `yarn build`. The production Vite base is `/runifly/`, so scripts, the favicon, and the Spotify callback sit under that path. There is no client-side router. Spotify returns to `https://macro88.github.io/runifly/` with query parameters, and GitHub Pages serves `index.html` for that directory. The build does not add a `404.html` copy.
+
+After a successful Pages deployment the job bumps a version tag and creates a GitHub release. The tag step is `anothrNick/github-tag-action`. The release step is `gh release create` on the runner.
+
+Two settings live outside this repository. Do both before the first production sign-in:
+
+1. On GitHub, open **Settings → Pages → Build and deployment** and set **Source** to **GitHub Actions**.
+2. In the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard), add this Redirect URI exactly: `https://macro88.github.io/runifly/`
 
 ## Known issues
 

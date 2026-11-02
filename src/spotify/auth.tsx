@@ -12,7 +12,7 @@ import {
 } from "@spotify/web-api-ts-sdk";
 import { isFixturesMode } from "../fixtures/playlist";
 import { isStalePkceError, STALE_PKCE_MESSAGE, stalePkceRecovery } from "./pkce";
-import { isSpotifyRedirectUri } from "./redirect";
+import { isSpotifyRedirectUri, resolveSpotifyRedirectUri } from "./redirect";
 import { RUNIFLY_SPOTIFY_SCOPES, SPOTIFY_SCOPE_STORAGE_KEY } from "./scopes";
 
 export interface SpotifyAuthState {
@@ -49,11 +49,19 @@ function loadSdk(): Promise<SpotifyApi | null> {
 
 async function authenticateSdk(retryStaleCallback = true): Promise<SpotifyApi | null> {
   const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
-  const redirectUrl = import.meta.env.VITE_REDIRECT_TARGET;
+  const configuredRedirect = import.meta.env.VITE_REDIRECT_TARGET;
   if (!clientId) {
     throw new Error("Set VITE_SPOTIFY_CLIENT_ID in .env.");
   }
-  if (!isSpotifyRedirectUri(redirectUrl)) {
+  if (!isSpotifyRedirectUri(configuredRedirect)) {
+    throw new Error("Redirect URI must be http://127.0.0.1:<port> or https.");
+  }
+  const redirectUrl = resolveSpotifyRedirectUri(
+    configuredRedirect,
+    import.meta.env.BASE_URL,
+    window.location.href
+  );
+  if (!redirectUrl || !isSpotifyRedirectUri(redirectUrl)) {
     throw new Error("Redirect URI must be http://127.0.0.1:<port> or https.");
   }
 
