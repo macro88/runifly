@@ -85,7 +85,9 @@ async function authenticateSdk(retryStaleCallback = true): Promise<SpotifyApi | 
     if (!retryStaleCallback || !isStalePkceError(error)) throw error;
     const recovery = stalePkceRecovery(error, window.location.href);
     if (!recovery || recovery.href === window.location.href) {
-      throw new Error(recovery?.message ?? "Spotify sign-in expired.");
+      throw new Error(recovery?.message ?? "Spotify sign-in expired.", {
+        cause: error,
+      });
     }
     window.history.replaceState({}, document.title, recovery.href);
     return authenticateSdk(false);

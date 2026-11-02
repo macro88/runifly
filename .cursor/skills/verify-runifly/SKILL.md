@@ -33,7 +33,7 @@ Fail is a non-zero exit code and a final line `verify-runifly: FAIL`, with the f
 The helper builds, then starts Vite preview itself. Do not start a second server for the same run.
 
 1. `yarn test` (Vitest, `src/**/*.test.ts`).
-2. `yarn lint` (`eslint . --ext ts,tsx --max-warnings 0`).
+2. `yarn lint` (`eslint . --max-warnings 0`).
 3. `yarn build` (`tsc && vite build`). The helper sets `VITE_SPOTIFY_CLIENT_ID=verify-not-a-secret` and `VITE_REDIRECT_TARGET` to the preview origin. Those values are dummies. They are not Spotify credentials. The helper overrides any `VITE_SPOTIFY_*` values already in the environment so a real client id is not baked into `dist/`.
 4. `yarn preview --host 127.0.0.1 --port $VERIFY_PORT --strictPort`. `VERIFY_PORT` defaults to `4173`. If that port is already taken, the helper stops and tells you to pick another. It does not kill the existing process.
 5. Ready means `GET http://127.0.0.1:$VERIFY_PORT/runifly/?fixtures=1` returns HTTP 200 and the body contains `id="root"`. The production build's Vite base is `/runifly/`, and `vite preview` serves that build there. Preview logs go to `.cursor/skills/verify-runifly/evidence/preview.log`.
