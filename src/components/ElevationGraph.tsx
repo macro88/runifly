@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef } from "react";
 import { theme } from "antd";
 import * as d3 from "d3";
-import { Gpx } from "../utils/gpxUtils";
 const { useToken } = theme;
 import { usePlaylistContext } from "../data/PlaylistContext";
 import { useCourseContext } from "../data/CourseContext";
 import { RuniflySong } from "../hooks/useSpotifyPlaylist";
-
-type DataPoint = {
-  lap: number;
-  elevation: number;
-};
+import {
+  courseKilometres,
+  elevationSamples,
+  kilometreX,
+  type ElevationSample,
+} from "./elevationGeometry";
 
 const setupSvg = (svgRef: React.RefObject<SVGSVGElement | null>) => {
   return d3
@@ -21,24 +21,16 @@ const setupSvg = (svgRef: React.RefObject<SVGSVGElement | null>) => {
 };
 const margin = { top: 10, right: 0, bottom: 10, left: 10 };
 
-function chartPoints(gpx: Gpx): DataPoint[] {
-  return gpx.laps.flatMap((lap, index) =>
-    lap.elevations.map((elevation, elIndex, elevationsArray) => ({
-      lap: index + elIndex / elevationsArray.length,
-      elevation,
-    }))
-  );
-}
-
 export const ElevationGraph: React.FC = () => {
   const { token } = useToken();
   const svgRef = useRef<SVGSVGElement>(null);
   const { hoveredSong, songs, sethoveredSong } = usePlaylistContext();
   const { gpx } = useCourseContext();
-  const chartData = useMemo(() => chartPoints(gpx), [gpx]);
+  const chartData = useMemo(() => elevationSamples(gpx.points), [gpx]);
+  const routeKilometres = courseKilometres(gpx.points);
 
   useEffect(() => {
-    const { svg, xScale, height } = getChart(svgRef, gpx, chartData);
+    const { svg, width, height } = getChart(svgRef, routeKilometres, chartData);
 
     if (!svgRef.current) return;
 
@@ -59,20 +51,22 @@ export const ElevationGraph: React.FC = () => {
     // Hide the callout when the mouse is not over the graph
     d3.select(svgRef.current).select(".hoveredCallout").remove();
 
+    const from = kilometreX(hoveredSong.lapFrom, routeKilometres, width);
+    const to = kilometreX(hoveredSong.lapTo, routeKilometres, width);
     const songRect = svg.append("rect").attr("class", "hoveredSongRect");
     const callout = svg.append("foreignObject").attr("class", "hoveredCallout");
     songRect
-      .attr("x", xScale(hoveredSong.lapFrom))
-      .attr("y", 10) // Adjust as needed
-      .attr("width", xScale(hoveredSong.lapTo) - xScale(hoveredSong.lapFrom))
-      .attr("height", height) // Adjust as needed
-      .attr("fill", "rgba(0, 0, 0, 0.5)"); // Adjust as needed
+      .attr("x", margin.left + from)
+      .attr("y", margin.top)
+      .attr("width", to - from)
+      .attr("height", height)
+      .attr("fill", "rgba(0, 0, 0, 0.5)");
 
     callout
-      .attr("x", xScale(hoveredSong.lapTo) + 10)
-      .attr("y", 10) // Adjust as needed
-      .attr("width", 200) // Adjust as needed
-      .attr("height", 50) // Adjust as needed
+      .attr("x", margin.left + to + 10)
+      .attr("y", margin.top)
+      .attr("width", 200)
+      .attr("height", 50)
       .html(
         `
               <div style="display: flex; align-items: center; width='100%' ">
@@ -84,19 +78,21 @@ export const ElevationGraph: React.FC = () => {
             `
       )
       .style("display", null);
-  }, [hoveredSong, token.colorPrimary, gpx, chartData]);
+  }, [hoveredSong, token.colorPrimary, routeKilometres, chartData]);
 
   useEffect(() => {
     const node = svgRef.current;
     if (!node) return;
 
-    const { xScale } = getChart(svgRef, gpx, chartData);
+    const { width } = getChart(svgRef, routeKilometres, chartData);
 
     const onMouseMove = (event: MouseEvent) => {
-      const mouseX = d3.pointer(event, node)[0];
+      const mouseX = d3.pointer(event, node)[0] - margin.left;
       let newSong: RuniflySong | null = null;
       for (const song of songs) {
-        if (xScale(song.lapFrom) <= mouseX && mouseX <= xScale(song.lapTo)) {
+        const from = kilometreX(song.lapFrom, routeKilometres, width);
+        const to = kilometreX(song.lapTo, routeKilometres, width);
+        if (from <= mouseX && mouseX <= to) {
           newSong = song;
           break;
         }
@@ -116,10 +112,14 @@ export const ElevationGraph: React.FC = () => {
       node.removeEventListener("mousemove", onMouseMove);
       node.removeEventListener("mouseout", onMouseOut);
     };
-  }, [chartData, gpx, hoveredSong, sethoveredSong, songs]);
+  }, [chartData, routeKilometres, hoveredSong, sethoveredSong, songs]);
 
   useEffect(() => {
-    const { svg, xScale, height, yScale } = getChart(svgRef, gpx, chartData);
+    const { svg, xScale, height, yScale, width } = getChart(
+      svgRef,
+      routeKilometres,
+      chartData
+    );
 
     svg.selectAll("*").remove(); // This line removes all child elements of the SVG
 
@@ -129,14 +129,14 @@ export const ElevationGraph: React.FC = () => {
 
     const generateScaledArea = d3
       .area()
-      .x((d) => xScale(d[0])) //lap
+      .x((d) => kilometreX(d[0], routeKilometres, width))
       .y0(height)
-      .y1((d) => yScale(d[1])) //elevation
+      .y1((d) => yScale(d[1]))
       .curve(d3.curveCardinal);
 
-    const chartDataTuples = chartData.map((d) => [d.lap, d.elevation]) as [
+    const chartDataTuples = chartData.map((d) => [d.kilometre, d.elevation]) as [
       number,
-      number
+      number,
     ][];
 
     g.append("path")
@@ -145,31 +145,29 @@ export const ElevationGraph: React.FC = () => {
       .attr("stroke-width", 2)
       .attr("fill", token.colorPrimary + "50")
       .attr("d", () => generateScaledArea(chartDataTuples));
-    //.attr("d", generateScaledArea);
 
     const xAxis: d3.Axis<number | { valueOf(): number }> = d3
       .axisBottom(xScale)
       .tickFormat((d) =>
         Math.round(typeof d === "number" ? d : d.valueOf()).toString()
       )
-      .ticks(Math.min(gpx.laps.length, 50));
+      .ticks(Math.min(50, Math.max(1, Math.ceil(routeKilometres))));
 
     const yAxis = d3.axisLeft(yScale).ticks(7);
     g.append("g").call(xAxis).attr("transform", `translate(0,${height})`);
     g.append("g").call(yAxis);
-  }, [chartData, gpx, token.colorPrimary]);
+  }, [chartData, routeKilometres, token.colorPrimary]);
 
   return <svg ref={svgRef} />;
 };
 
 function getChart(
   svgRef: React.RefObject<SVGSVGElement | null>,
-  gpx: Gpx,
-  chartData: DataPoint[]
+  routeKilometres: number,
+  chartData: ElevationSample[]
 ) {
   const svg = setupSvg(svgRef);
 
-  // Map each elevation point to its relative position within the total number of points
   const svgNode = svg.node();
   const width =
     (svgNode?.getBoundingClientRect().width || 0) - margin.left - margin.right;
@@ -178,7 +176,7 @@ function getChart(
 
   const xScale = d3
     .scaleLinear()
-    .domain([0, gpx.laps.length])
+    .domain([0, routeKilometres])
     .range([0, width]);
 
   const yScale = d3
@@ -188,5 +186,5 @@ function getChart(
       Math.max(100, d3.max(chartData, (d) => d.elevation) || 0),
     ])
     .range([height, 0]);
-  return { svg, xScale, height, yScale };
+  return { svg, xScale, width, height, yScale };
 }

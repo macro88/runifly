@@ -27,13 +27,14 @@ Preconditions:
 
 - **Read the rows.** For each song name, the script waits until the `tr` containing that name has `td` text for the three strings above. It prints `Name | song … | km … | race …`. `getByRole("row")` and `getByRole("cell")` do not match these rows: the sortable attributes set `role="button"` on the `<tr>`.
 - **Save the proof.** The script writes `evidence/song-table.png` (full page, table visible) and `evidence/song-table.txt` (cell text). Exit code 0 and `verify-runifly: PASS` are required as well.
+- **Check the chart band.** After the three rows match, the script hovers each song row and reads `.hoveredSongRect`. The band's left and right edges must sit at that song's kilometres on the 4 km course: edge = plot origin + (km / 4) × plot width. The callout text contains the song name. This checks the chart scale. It does not replace the table strings above.
 
 The same numbers are asserted without the browser in `src/data/timing.test.ts` against `updateTimingData`. `1.7` is `parseFloat((510.5 / 300).toFixed(2))`, not the unrounded `1.7016…`. `8:31` is `Math.round(30.5)` inside `formatTimeFromSeconds`, not `8:30`.
 
 ## Gotchas
 
 - These strings are today's baseline. A pull request that changes the timing formula updates this file's list, the `songs` array in `scripts/verify.mjs`, and `src/data/timing.test.ts` together. A pull request that only fixes GPX distance, laps, or the chart does not change these strings. Song timing does not read the GPX.
-- Do not assert the chart, lap totals, or `createFakeGpx`. Those move when the known distance and lap bugs are fixed, and they are the wrong oracle for this feature. Details are in the skill section "Baseline that later fixes will move".
+- The song table is the timing oracle. The band-edge check uses the same kilometre numbers as a chart scale, not as a second timing formula. Do not assert lap totals or `createFakeGpx` in this journey. Details are in the skill section "Baseline that later fixes will move".
 - Kilometre cells are the pace-sensitive proof. Race times do not change when the pace changes, so a race-time match on its own does not prove the pace was applied.
 - Matching `0 - 0.6` as a substring of a longer cell is not enough for a future edit. The helper compares whole `td` strings.
 - Song rows are not `role="row"`. A locator written that way times out even when the titles are on screen.

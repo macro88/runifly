@@ -29,4 +29,4 @@ Preconditions:
 - Set the pace after this step. Changing the distance recomputes the pace from the target time already on screen.
 - The value `4` is the millimetre-rounded haversine of this file. See the skill section "Baseline that later fixes will move".
 - A file with several track segments loads. A one-point file is rejected, and the distance and pace already on screen stay. This journey still uses the one-segment sample. Vitest covers the other shapes.
-- The chart drawn for this course is not proof that the climb or the distance is right. It is plotted per lap.
+- The chart's horizontal position is kilometres from each point's `totalDistance`. Hovering a song row draws a band from that song's start kilometre to its end kilometre, in the same scale as the terrain. The journey checks those edges on this 4 km course. The chart is not the oracle for the distance field or the song table.

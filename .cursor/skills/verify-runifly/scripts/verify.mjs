@@ -323,6 +323,58 @@ async function waitForSong(page, song) {
   );
 }
 
+async function assertSongBand(page, song, distanceKm) {
+  const [from, to] = song.km.split(" - ").map(Number);
+  await songRow(page, song.name).first().hover();
+  const started = Date.now();
+  let band = null;
+  while (Date.now() - started < 5000) {
+    band = await page.evaluate(() => {
+      const svg = document.querySelector(".course-viewer svg");
+      const rect = svg && svg.querySelector(".hoveredSongRect");
+      const callout = svg && svg.querySelector(".hoveredCallout");
+      if (!svg || !rect) return null;
+      const width = Number(rect.getAttribute("width"));
+      if (!(width > 1)) return null;
+      const svgBox = svg.getBoundingClientRect();
+      const rectBox = rect.getBoundingClientRect();
+      const plot = svg.querySelector("g");
+      const transform = plot ? plot.getAttribute("transform") || "" : "";
+      const margin = /translate\(\s*([-\d.]+)/.exec(transform);
+      return {
+        svgWidth: svgBox.width,
+        marginLeft: margin ? Number(margin[1]) : null,
+        left: rectBox.left - svgBox.left,
+        right: rectBox.right - svgBox.left,
+        callout: (callout?.textContent || "").replace(/\s+/g, " ").trim(),
+      };
+    });
+    if (band) break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  if (!band || band.marginLeft === null) {
+    throw fail(`${song.name} band was not drawn on the chart`);
+  }
+  const plotWidth = band.svgWidth - band.marginLeft;
+  const expectedLeft = band.marginLeft + (from / distanceKm) * plotWidth;
+  const expectedRight = band.marginLeft + (to / distanceKm) * plotWidth;
+  const slack = 1.5;
+  if (
+    Math.abs(band.left - expectedLeft) > slack ||
+    Math.abs(band.right - expectedRight) > slack
+  ) {
+    throw fail(
+      `${song.name} band edges were ${band.left.toFixed(1)}-${band.right.toFixed(1)} px, expected ${expectedLeft.toFixed(1)}-${expectedRight.toFixed(1)} for km ${from}-${to} on a ${distanceKm} km chart`
+    );
+  }
+  if (!band.callout.includes(song.name)) {
+    throw fail(`${song.name} callout was "${band.callout}"`);
+  }
+  console.log(
+    `${song.name} band km ${from} - ${to} at ${band.left.toFixed(1)}-${band.right.toFixed(1)} px`
+  );
+}
+
 async function drive(external, pageErrors) {
   console.log("\nverify-runifly: browser");
   let browser;
@@ -400,6 +452,14 @@ async function drive(external, pageErrors) {
   if (paceAfter !== "05:00") {
     throw fail(`pace field changed to "${paceAfter}" while closing the picker`);
   }
+
+  // Band edges use the same margin as ElevationGraph: the plot is shifted
+  // right by translate(10, …) and the scale width is the svg width minus that.
+  const distanceKm = Number(distanceValue);
+  for (const song of songs) {
+    await assertSongBand(page, song, distanceKm);
+  }
+  await page.mouse.move(8, 8);
 
   const shot = path.join(evidenceDir, "song-table.png");
   await page.screenshot({ path: shot, fullPage: true });
