@@ -12,7 +12,7 @@ type DataPoint = {
   elevation: number;
 };
 
-const setupSvg = (svgRef: React.RefObject<SVGSVGElement>) => {
+const setupSvg = (svgRef: React.RefObject<SVGSVGElement | null>) => {
   return d3
     .select(svgRef.current)
     .attr("width", "100%")
@@ -174,7 +174,7 @@ export const ElevationGraph: React.FC = () => {
 };
 
 function getChart(
-  svgRef: React.RefObject<SVGSVGElement>,
+  svgRef: React.RefObject<SVGSVGElement | null>,
   gpx: Gpx,
   chartData: DataPoint[]
 ) {

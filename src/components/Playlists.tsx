@@ -43,7 +43,7 @@ const columns: ColumnsType<DataType> = [
         <Avatar shape="square" src={record.image}>
           {name}
         </Avatar>
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <strong>{name}</strong>
           {record.description}
           <Typography.Text type="secondary">

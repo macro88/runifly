@@ -33,7 +33,7 @@ const columns: ColumnsType<RuniflySong> = [
     render: (name: string, record: RuniflySong) => (
       <Space>
         <Avatar shape="square" src={record.albumArt}></Avatar>
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <strong>{name}</strong>
           {record.artistName}
         </Space>
@@ -115,15 +115,18 @@ const Row = ({ children, ...props }: RowProps) => {
     <tr {...props} ref={setNodeRef} style={style} {...attributes}>
       {React.Children.map(children, (child) => {
         if ((child as React.ReactElement).key === "sort") {
-          return React.cloneElement(child as React.ReactElement, {
-            children: (
-              <MenuOutlined
-                ref={setActivatorNodeRef}
-                style={{ touchAction: "none", cursor: "move" }}
-                {...listeners}
-              />
-            ),
-          });
+          return React.cloneElement(
+            child as React.ReactElement<{ children?: React.ReactNode }>,
+            {
+              children: (
+                <MenuOutlined
+                  ref={setActivatorNodeRef}
+                  style={{ touchAction: "none", cursor: "move" }}
+                  {...listeners}
+                />
+              ),
+            }
+          );
         }
         return child;
       })}
