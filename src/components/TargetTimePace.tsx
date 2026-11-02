@@ -1,59 +1,31 @@
-import { useState, useEffect } from "react";
 import { Form, Space, TimePicker, InputNumber } from "antd";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import { useCourseContext } from "../data/CourseContext";
+import { calculatePace, calculateTargetTime } from "../data/pace";
 
 dayjs.extend(duration);
 
-type Duration = ReturnType<typeof dayjs.duration>;
-
 const TargetTimePace = () => {
-  const { distance, setDistance, setPace } = useCourseContext();
+  const { distance, setDistance, targetTime, setTargetTime } = useCourseContext();
 
-  const defaultPace = dayjs.duration(5.5 * 60, "seconds");
-
-  const [inputPace, setInputPace] = useState(defaultPace);
-  const [inputTargetTime, setInputTargetTime] = useState(
-    dayjs.duration(defaultPace.asSeconds() * distance * 1000)
-  );
-
-  const [calculatedTargetTime, setCalculatedTargetTime] = useState(
-    dayjs.duration(defaultPace.asSeconds() * distance * 1000)
-  );
-
-  function calculatePace(time: Duration, distance: number): Duration {
-    const totalSeconds = time.asSeconds();
-
-    const paceInSecondsPerKm = totalSeconds / distance;
-
-    return dayjs.duration(paceInSecondsPerKm, "seconds");
-  }
-
-  function calculateTargetTime(pace: Duration, distance: number): Duration {
-    const paceInSecondsPerKm = pace.asSeconds();
-    const totalSeconds = paceInSecondsPerKm * distance;
-    return dayjs.duration(totalSeconds, "seconds");
-  }
+  const inputPace = calculatePace(targetTime, distance);
+  const calculatedTargetTime = calculateTargetTime(inputPace, distance);
 
   const handleDistanceChange = (value: number | null) => {
     if (!value) return;
+    setTargetTime(calculateTargetTime(inputPace, value));
     setDistance(value);
-    const targetTime = calculateTargetTime(inputPace, value);
-    setInputTargetTime(targetTime);
-    setCalculatedTargetTime(targetTime);
   };
 
   const handleTargetTimeChange = (time: dayjs.Dayjs | null) => {
     if (!time) return;
-    const newTargetTime = dayjs.duration(
-      time.hour() * 3600 + time.minute() * 60 + time.second(),
-      "seconds"
+    setTargetTime(
+      dayjs.duration(
+        time.hour() * 3600 + time.minute() * 60 + time.second(),
+        "seconds"
+      )
     );
-    setInputTargetTime(newTargetTime);
-    const pace = calculatePace(newTargetTime, distance);
-    setInputPace(pace);
-    setPace(pace.asSeconds());
   };
 
   const handlePaceChange = (time: dayjs.Dayjs | null) => {
@@ -62,23 +34,8 @@ const TargetTimePace = () => {
       time.minute() * 60 + time.second(),
       "seconds"
     );
-    setInputPace(newPace);
-    setPace(newPace.asSeconds());
-    const targetTime = calculateTargetTime(newPace, distance);
-    setInputTargetTime(targetTime);
-    setCalculatedTargetTime(targetTime);
+    setTargetTime(calculateTargetTime(newPace, distance));
   };
-
-  useEffect(() => {
-    const pace = calculatePace(inputTargetTime, distance);
-    setInputPace(pace);
-    setPace(pace.asSeconds());
-  }, [inputTargetTime, distance, setPace]);
-
-  useEffect(() => {
-    const time = calculateTargetTime(inputPace, distance);
-    setCalculatedTargetTime(time);
-  }, [inputPace, distance]);
 
   return (
     <Form layout="horizontal">

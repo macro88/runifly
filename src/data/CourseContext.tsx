@@ -1,14 +1,20 @@
 // CourseContext.tsx
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { Gpx, createFakeGpx } from "../utils/gpxUtils";
+import {
+  RaceDuration,
+  calculatePace,
+  starterTargetTime,
+} from "./pace";
 
 interface CourseContextType {
   distance: number;
   pace: number;
+  targetTime: RaceDuration;
   name: string;
   gpx: Gpx;
   setDistance: (distance: number) => void;
-  setPace: (pace: number) => void;
+  setTargetTime: (targetTime: RaceDuration) => void;
   setName: (name: string) => void;
   setGpx: (gpx: Gpx) => void;
   reset: () => void;
@@ -27,26 +33,45 @@ const defaultValues = {
   gpx: createFakeGpx("fake", 42.196, 5.0),
 };
 
+const starterTarget = starterTargetTime(defaultValues.distance);
+
 export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
-  const [distance, setDistance] = useState<number>(defaultValues.distance);
-  const [pace, setPace] = useState<number>(defaultValues.pace);
+  const [distance, setDistanceState] = useState<number>(defaultValues.distance);
+  const [targetTime, setTargetTimeState] = useState<RaceDuration>(starterTarget);
+  // Reset used to write pace 5 while leaving the form's target alone, and the
+  // pace effect only corrected that when distance actually changed. The pin
+  // keeps that split: songs see 5s/km, the form still shows its target.
+  const [pinnedPace, setPinnedPace] = useState<number | null>(null);
   const [name, setName] = useState<string>(defaultValues.name);
   const [gpx, setGpx] = useState<Gpx>(defaultValues.gpx);
 
+  const setDistance = (next: number) => {
+    setPinnedPace(null);
+    setDistanceState(next);
+  };
+
+  const setTargetTime = (next: RaceDuration) => {
+    setPinnedPace(null);
+    setTargetTimeState(next);
+  };
+
   const reset = () => {
-    setDistance(defaultValues.distance);
-    setPace(defaultValues.pace);
+    setPinnedPace(distance === defaultValues.distance ? defaultValues.pace : null);
+    setDistanceState(defaultValues.distance);
     setName(defaultValues.name);
     setGpx(defaultValues.gpx);
   };
 
+  const pace = pinnedPace ?? calculatePace(targetTime, distance).asSeconds();
+
   const value = {
     distance,
     pace,
+    targetTime,
     name,
     gpx,
     setDistance,
-    setPace,
+    setTargetTime,
     setName,
     reset,
     setGpx,
