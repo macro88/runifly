@@ -293,19 +293,26 @@ export async function parseFile(file: File): Promise<Gpx> {
   };
 }
 
+const MILLIMETRES_PER_METRE = 1000;
+const MILLIMETRES_PER_LAP = 1000 * MILLIMETRES_PER_METRE;
+
+function metresToMillimetres(metres: number): number {
+  return Math.round(metres * MILLIMETRES_PER_METRE);
+}
+
 export function aggregateLaps(points: PointDetail[]): Lap[] {
   const laps: Lap[] = [];
   let lapNumber = 1;
   let elevations: number[] = [];
-  let lapDistance = 0;
+  let lapMillimetres = 0;
   let elevationGain = 0;
   let elevationLoss = 0;
   let time = 0;
 
-  const closeLap = (distance: number) => {
+  const closeLap = (millimetres: number) => {
     laps.push({
       lap: lapNumber,
-      totalDistance: distance,
+      totalDistance: millimetres / MILLIMETRES_PER_METRE,
       elevationGain,
       elevationLoss,
       elevations: [...elevations],
@@ -316,7 +323,7 @@ export function aggregateLaps(points: PointDetail[]): Lap[] {
     elevationGain = 0;
     elevationLoss = 0;
     time = 0;
-    lapDistance = 0;
+    lapMillimetres = 0;
   };
 
   for (const point of points) {
@@ -326,17 +333,17 @@ export function aggregateLaps(points: PointDetail[]): Lap[] {
     elevationLoss += point.elevationLoss;
     time += point.time;
 
-    let remaining = point.distance;
-    while (lapDistance + remaining >= 1000) {
-      const needed = 1000 - lapDistance;
+    let remainingMillimetres = metresToMillimetres(point.distance);
+    while (lapMillimetres + remainingMillimetres >= MILLIMETRES_PER_LAP) {
+      const needed = MILLIMETRES_PER_LAP - lapMillimetres;
       if (!(needed > 0)) break;
-      remaining -= needed;
-      closeLap(1000);
-      if (remaining > 0) elevations.push(elevation);
+      remainingMillimetres -= needed;
+      closeLap(MILLIMETRES_PER_LAP);
+      if (remainingMillimetres > 0) elevations.push(elevation);
     }
-    lapDistance += remaining;
+    lapMillimetres += remainingMillimetres;
   }
 
-  if (lapDistance > 0) closeLap(lapDistance);
+  if (lapMillimetres > 0) closeLap(lapMillimetres);
   return laps;
 }

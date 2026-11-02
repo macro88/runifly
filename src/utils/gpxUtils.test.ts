@@ -195,6 +195,18 @@ describe("aggregateLaps", () => {
     expect(laps.reduce((sum, lap) => sum + lap.totalDistance, 0)).toBe(2500);
   });
 
+  it("does not open another lap for a floating-point scrap of an exact kilometre", () => {
+    const laps = aggregateLaps([
+      detail(333.333, 333.333),
+      detail(333.333, 666.666),
+      detail(333.333, 999.999),
+      detail(0.001, 1000),
+    ]);
+
+    expect(laps.map((lap) => lap.lap)).toEqual([1]);
+    expect(laps.map((lap) => lap.totalDistance)).toEqual([1000]);
+  });
+
   it("does not add an extra lap when the route ends on a kilometre", async () => {
     const course = await load(fixtureClimb, "fixture-climb.gpx");
 
