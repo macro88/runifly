@@ -1,5 +1,12 @@
 // CourseContext.tsx
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  ReactNode,
+} from "react";
 import { Gpx, createFakeGpx } from "../utils/gpxUtils";
 import {
   RaceDuration,
@@ -45,37 +52,42 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
   const [name, setName] = useState<string>(defaultValues.name);
   const [gpx, setGpx] = useState<Gpx>(defaultValues.gpx);
 
-  const setDistance = (next: number) => {
+  const setDistance = useCallback((next: number) => {
     setPinnedPace(null);
     setDistanceState(next);
-  };
+  }, []);
 
-  const setTargetTime = (next: RaceDuration) => {
+  const setTargetTime = useCallback((next: RaceDuration) => {
     setPinnedPace(null);
     setTargetTimeState(next);
-  };
+  }, []);
 
-  const reset = () => {
-    setPinnedPace(distance === defaultValues.distance ? defaultValues.pace : null);
+  const reset = useCallback(() => {
+    setPinnedPace(
+      distance === defaultValues.distance ? defaultValues.pace : null
+    );
     setDistanceState(defaultValues.distance);
     setName(defaultValues.name);
     setGpx(defaultValues.gpx);
-  };
+  }, [distance]);
 
   const pace = pinnedPace ?? calculatePace(targetTime, distance).asSeconds();
 
-  const value = {
-    distance,
-    pace,
-    targetTime,
-    name,
-    gpx,
-    setDistance,
-    setTargetTime,
-    setName,
-    reset,
-    setGpx,
-  };
+  const value = useMemo(
+    () => ({
+      distance,
+      pace,
+      targetTime,
+      name,
+      gpx,
+      setDistance,
+      setTargetTime,
+      setName,
+      reset,
+      setGpx,
+    }),
+    [distance, gpx, name, pace, reset, setDistance, setTargetTime, targetTime]
+  );
 
   return (
     <CourseContext.Provider value={value}>{children}</CourseContext.Provider>

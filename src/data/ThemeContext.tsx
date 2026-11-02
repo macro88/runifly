@@ -1,6 +1,12 @@
 // CourseContext.tsx
 import { ConfigProvider, theme } from "antd";
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  ReactNode,
+} from "react";
 
 interface ThemeContextType {
   darkMode: boolean;
@@ -22,12 +28,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     token: { colorFillContent },
   } = theme.useToken();
 
-  const value = {
-    darkMode,
-    primaryColor,
-    setDarkMode,
-    setPrimaryColor,
-  };
+  const value = useMemo(
+    () => ({
+      darkMode,
+      primaryColor,
+      setDarkMode,
+      setPrimaryColor,
+    }),
+    [darkMode, primaryColor]
+  );
 
   return (
     <ThemeContext.Provider value={value}>
