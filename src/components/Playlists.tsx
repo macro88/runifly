@@ -151,7 +151,7 @@ const Playlists: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(tableParams), sdk]);
 
-  const handleTableChange: TableProps["onChange"] = (
+  const handleTableChange: TableProps<DataType>["onChange"] = (
     pagination,
 
     sorter

@@ -61,47 +61,6 @@ function radiansToLength(radians: number): number {
   return radians * factor;
 }
 
-export function calculateDistanceHaversine(
-  point1: GeoJsonPoint,
-  point2: GeoJsonPoint
-): number {
-  const [lon1, lat1, ele1] = point1;
-  const [lon2, lat2, ele2] = point2;
-
-  const earthRadius = 6371; // Radius of the Earth in kilometers
-
-  // Convert latitude and longitude to radians
-  const lat1Rad = (lat1 * Math.PI) / 180;
-  const lon1Rad = (lon1 * Math.PI) / 180;
-  const lat2Rad = (lat2 * Math.PI) / 180;
-  const lon2Rad = (lon2 * Math.PI) / 180;
-
-  // Calculate differences
-  const dLat = lat2Rad - lat1Rad;
-  const dLon = lon2Rad - lon1Rad;
-
-  // Calculate distance using Haversine formula
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1Rad) *
-      Math.cos(lat2Rad) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  const distance = earthRadius * c;
-
-  // Calculate elevation difference
-  const eleDifference = (ele2 - ele1) / 1000;
-
-  // Calculate total distance including elevation
-  const totalDistance = Math.sqrt(
-    distance * distance + eleDifference * eleDifference
-  );
-
-  return totalDistance;
-}
-
 function getPointDetails(points: GeoJsonPoint[]): PointDetail[] {
   const result: PointDetail[] = [];
 
@@ -138,95 +97,6 @@ function getPointDetails(points: GeoJsonPoint[]): PointDetail[] {
 export function degreesToRadians(degrees: number): number {
   const radians = degrees % 360;
   return (radians * Math.PI) / 180;
-}
-
-export function degreesDecimalToRadians(degrees: number): number {
-  const radians = degrees % 360;
-  return radians * (Math.PI / 180);
-}
-
-function toRadians(degrees: number) {
-  return degrees * (Math.PI / 180);
-}
-
-export function calculateDistanceVincenty(
-  point1: GeoJsonPoint,
-  point2: GeoJsonPoint
-) {
-  const [lon1, lat1] = point1;
-  const [lon2, lat2] = point2;
-
-  const a = 6378137; // Semi-major axis of the Earth
-  const b = 6356752.3142; // Semi-minor axis of the Earth
-  const f = 1 / 298.257223563; // Flattening of the Earth
-
-  const L = toRadians(lon2 - lon1);
-  const U1 = Math.atan((1 - f) * Math.tan(toRadians(lat1)));
-  const U2 = Math.atan((1 - f) * Math.tan(toRadians(lat2)));
-  const sinU1 = Math.sin(U1);
-  const cosU1 = Math.cos(U1);
-  const sinU2 = Math.sin(U2);
-  const cosU2 = Math.cos(U2);
-
-  let lambda = L;
-  let lambdaP;
-  let iterLimit = 100;
-  let sinSigma, cosSigma, sigma, sinAlpha, cosSqAlpha, cos2SigmaM;
-
-  do {
-    const sinLambda = Math.sin(lambda);
-    const cosLambda = Math.cos(lambda);
-    sinSigma = Math.sqrt(
-      cosU2 * sinLambda * (cosU2 * sinLambda) +
-        (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) *
-          (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda)
-    );
-
-    if (sinSigma === 0) return 0; // Co-incident points
-
-    cosSigma = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda;
-    sigma = Math.atan2(sinSigma, cosSigma);
-    sinAlpha = (cosU1 * cosU2 * sinLambda) / sinSigma;
-    cosSqAlpha = 1 - sinAlpha * sinAlpha; // This line calculates cosSqAlpha
-    cos2SigmaM = cosSigma - (2 * sinU1 * sinU2) / cosSqAlpha;
-
-    const C = (f / 16) * cosSqAlpha * (4 + f * (4 - 3 * cosSqAlpha));
-    lambdaP = lambda;
-    lambda =
-      L +
-      (1 - C) *
-        f *
-        sinAlpha *
-        (sigma +
-          C *
-            sinSigma *
-            (cos2SigmaM + C * cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM)));
-  } while (Math.abs(lambda - lambdaP) > 1e-12 && --iterLimit > 0);
-
-  if (iterLimit === 0) return NaN; // Formula failed to converge
-  const uSq = (cosSqAlpha * (a * a - b * b)) / (b * b);
-  const A = 1 + (uSq / 16384) * (4096 + uSq * (-768 + uSq * (320 - 175 * uSq)));
-  const B = (uSq / 1024) * (256 + uSq * (-128 + uSq * (74 - 47 * uSq)));
-  const deltaSigma =
-    B *
-    sinSigma *
-    (cos2SigmaM +
-      (B / 4) *
-        (cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM) -
-          (B / 6) *
-            cos2SigmaM *
-            (-3 + 4 * sinSigma * sinSigma) *
-            (-3 + 4 * cos2SigmaM * cos2SigmaM)));
-
-  const s = b * A * (sigma - deltaSigma); // The distance in meters
-
-  // Calculate elevation difference
-  //const eleDifference = ele2 - ele1;
-
-  // Calculate total distance including elevation
-  const totalDistance = Math.sqrt(s * s);
-
-  return totalDistance / 1000; // Convert the distance to kilometers
 }
 
 export function createFakeGpx(
@@ -273,19 +143,6 @@ export function createFakeGpx(
     points: points,
     laps,
   };
-}
-
-export function toTime(mins: number) {
-  // Convert it to seconds
-  let totalSeconds = mins * 60;
-
-  // Calculate hours, minutes and seconds
-  const hours = Math.floor(totalSeconds / 3600);
-  totalSeconds %= 3600;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-
-  return { hours, minutes, seconds };
 }
 
 function smoothPoints(
@@ -336,9 +193,6 @@ export async function parseFile(file: File): Promise<Gpx> {
 
   const contents = await file.text();
   const gpx = await parser.parse(contents);
-  //console.log(gpx);
-  //console.log(parser.calculateTotalDistanceForPoints(gpx.trk[0].trkseg.trkpt));
-  //console.log(parser.calculateElevationData(gpx.trk[0].trkseg.trkpt));
 
   const points = getPointDetails(
     smoothPoints(
@@ -356,10 +210,6 @@ export async function parseFile(file: File): Promise<Gpx> {
     points,
     laps: laps,
   };
-  //console.log(gpx);
-  //console.log(parser.toStreamJSON(gpx.trk[0].trkseg.trkpt));
-  //console.log(x);
-
   return x;
 }
 
