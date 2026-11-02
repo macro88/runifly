@@ -87,44 +87,35 @@ export const ElevationGraph: React.FC = () => {
   }, [hoveredSong, token.colorPrimary, gpx, chartData]);
 
   useEffect(() => {
-    const { svg, xScale } = getChart(svgRef, gpx, chartData);
+    const node = svgRef.current;
+    if (!node) return;
 
-    svg
-      .on("mousemove", (event) => {
-        // Calculate the mouse x position
-        const mouseX = d3.pointer(event, svgRef.current)[0];
+    const { xScale } = getChart(svgRef, gpx, chartData);
 
-        // Find the closest data point
-        let minDistance = Infinity;
-
-        for (const point of chartData) {
-          const distance = Math.abs(xScale(point.lap) - mouseX);
-          if (distance < minDistance) {
-            minDistance = distance;
-          }
+    const onMouseMove = (event: MouseEvent) => {
+      const mouseX = d3.pointer(event, node)[0];
+      let newSong: RuniflySong | null = null;
+      for (const song of songs) {
+        if (xScale(song.lapFrom) <= mouseX && mouseX <= xScale(song.lapTo)) {
+          newSong = song;
+          break;
         }
+      }
+      if (newSong && newSong !== hoveredSong) {
+        sethoveredSong(newSong);
+      }
+    };
 
-        // Find the song that the mouse is over
-        let newSong: RuniflySong | null = null;
-        for (const song of songs) {
-          if (xScale(song.lapFrom) <= mouseX && mouseX <= xScale(song.lapTo)) {
-            newSong = song;
-            break;
-          }
-        }
+    const onMouseOut = () => {
+      sethoveredSong(undefined);
+    };
 
-        // If the mouse is over a new song, update the rectangle's position and size
-        if (newSong != undefined && newSong !== hoveredSong) {
-          if (!newSong) {
-            sethoveredSong(newSong);
-          }
-          //currentSong = newSong;
-          sethoveredSong(newSong);
-        }
-      })
-      .on("mouseout", () => {
-        sethoveredSong(undefined);
-      });
+    node.addEventListener("mousemove", onMouseMove);
+    node.addEventListener("mouseout", onMouseOut);
+    return () => {
+      node.removeEventListener("mousemove", onMouseMove);
+      node.removeEventListener("mouseout", onMouseOut);
+    };
   }, [chartData, gpx, hoveredSong, sethoveredSong, songs]);
 
   useEffect(() => {
