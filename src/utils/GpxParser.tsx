@@ -1,323 +1,150 @@
-import * as xml2js from "xml2js";
-import { parseNumbers } from "xml2js/lib/processors";
-import "./types";
-import {
-  Elevation,
-  GeoJson,
-  GeoJsonFeature,
-  GpxJson,
-  Point,
-  StreamJson,
-  StreamJSONInputOptions,
-} from "./types";
+type XmlPrimitive = string | number;
+type XmlValue = XmlPrimitive | XmlNode | XmlValue[];
+type XmlNode = { [key: string]: XmlValue };
+
+type GpxPoint = {
+  lat: number;
+  lon: number;
+  ele: number;
+};
+
+type GpxTrack = {
+  name: string;
+  trkseg: {
+    trkpt: GpxPoint[];
+  };
+};
+
+type GpxJson = {
+  metadata?: unknown;
+  wpt?: unknown;
+  rte?: unknown[];
+  trk: GpxTrack[];
+};
+
+/**
+ * xml2js parseNumbers. Integers stay integers (`1.0` → 1); other numerics
+ * become floats. Non-numeric text is left alone.
+ */
+function parseNumbers(value: string): XmlPrimitive {
+  if (Number.isNaN(Number(value))) return value;
+  return Number(value) % 1 === 0 ? parseInt(value, 10) : parseFloat(value);
+}
+
+/** explicitArray: false — one child stays a value, the next of the same name makes an array. */
+function assignOrPush(obj: XmlNode, key: string, value: XmlValue): void {
+  if (!(key in obj)) {
+    obj[key] = value;
+    return;
+  }
+  const current = obj[key];
+  if (Array.isArray(current)) {
+    current.push(value);
+    return;
+  }
+  obj[key] = [current, value];
+}
+
+function childElements(el: Element): Element[] {
+  const children: Element[] = [];
+  for (let i = 0; i < el.childNodes.length; i += 1) {
+    const node = el.childNodes[i];
+    if (node.nodeType === 1) children.push(node as Element);
+  }
+  return children;
+}
+
+function textContent(el: Element): string {
+  let text = "";
+  for (let i = 0; i < el.childNodes.length; i += 1) {
+    const node = el.childNodes[i];
+    if (node.nodeType === 3 || node.nodeType === 4) {
+      text += node.nodeValue ?? "";
+    }
+  }
+  return text;
+}
+
+function elementName(el: Element): string {
+  return String(parseNumbers(el.localName || el.nodeName));
+}
+
+/**
+ * One element, in the shape xml2js built with mergeAttrs, trim, and
+ * explicitArray: false. A single trkpt stays an object; two become an array.
+ * Whitespace-only text is kept only when the element has nothing else.
+ */
+function elementContents(el: Element): XmlValue {
+  const obj: XmlNode = {};
+  const attributes = el.attributes;
+  for (let i = 0; i < attributes.length; i += 1) {
+    const attr = attributes.item(i);
+    if (!attr) continue;
+    // Qualified name, matching xml2js. localName would turn xmlns:trk into trk
+    // and collide with a <trk> child.
+    assignOrPush(
+      obj,
+      String(parseNumbers(attr.name)),
+      parseNumbers(attr.value)
+    );
+  }
+
+  const children = childElements(el);
+  const text = textContent(el);
+  const onlyWhitespace = /^\s*$/.test(text);
+  if (!onlyWhitespace) {
+    const processed = parseNumbers(text.trim());
+    if (Object.keys(obj).length === 0 && children.length === 0) {
+      return processed;
+    }
+    obj._ = processed;
+  } else if (Object.keys(obj).length === 0 && children.length === 0) {
+    return text;
+  }
+
+  for (const child of children) {
+    assignOrPush(obj, elementName(child), elementContents(child));
+  }
+  return obj;
+}
+
+function parseGpxXml(xml: string): { gpx: XmlValue } {
+  if (xml.trim() === "") {
+    throw new Error("Invalid GPX");
+  }
+  const doc = new DOMParser().parseFromString(xml, "text/xml");
+  const root = doc.documentElement;
+  if (
+    root == null ||
+    root.localName === "parsererror" ||
+    root.getElementsByTagName("parsererror").length > 0
+  ) {
+    throw new Error("Invalid GPX");
+  }
+  const name = root.localName || root.nodeName;
+  return { [name]: elementContents(root) } as { gpx: XmlValue };
+}
 
 export default class GpxParser {
-  constructor() {}
-
   async parse(gpxstring: string): Promise<GpxJson> {
-    const parserOptions: xml2js.ParserOptions = {
-      tagNameProcessors: [parseNumbers],
-      attrNameProcessors: [parseNumbers],
-      valueProcessors: [parseNumbers],
-      attrValueProcessors: [parseNumbers],
-      preserveChildrenOrder: true,
-      trim: true,
-      explicitArray: false,
-      mergeAttrs: true,
-    };
-    const parser = new xml2js.Parser(parserOptions);
-    const jsonReturn: GpxJson = {} as GpxJson;
+    const jsonReturn = {} as GpxJson;
     try {
-      const result = await parser.parseStringPromise(gpxstring);
-      jsonReturn.metadata = result.gpx.metadata;
-      jsonReturn.wpt = result.gpx.wpt;
-      if (result.gpx.rte) {
-        if (Array.isArray(result.gpx.rte)) {
-          jsonReturn.rte = result.gpx.rte;
-        } else {
-          jsonReturn.rte = [result.gpx.rte];
-        }
+      const result = parseGpxXml(gpxstring);
+      const gpx = result.gpx as {
+        metadata?: GpxJson["metadata"];
+        wpt?: GpxJson["wpt"];
+        rte?: unknown;
+        trk?: GpxTrack | GpxTrack[];
+      };
+      jsonReturn.metadata = gpx.metadata;
+      jsonReturn.wpt = gpx.wpt;
+      if (gpx.rte) {
+        jsonReturn.rte = Array.isArray(gpx.rte) ? gpx.rte : [gpx.rte];
       }
-
-      if (Array.isArray(result.gpx.trk)) {
-        jsonReturn.trk = result.gpx.trk;
-      } else {
-        jsonReturn.trk = [result.gpx.trk];
-      }
+      jsonReturn.trk = Array.isArray(gpx.trk) ? gpx.trk : [gpx.trk as GpxTrack];
     } catch (e) {
       console.error(e);
     }
-
     return jsonReturn;
-  }
-
-  /**
-   * Computes the total distance traveled for a given track
-   *
-   * @param  {} track - The track which to calculate the total distance
-   *
-   * @return {number} The total distance traveled, reported in
-   */
-  calculateTotalDistanceForPoints(points: Point[]): number {
-    let totalDistance: number = 0;
-    for (let i = 0; i < points.length - 1; i++) {
-      totalDistance += this.calculateDistanceBetweenPoints(
-        points[i],
-        points[i + 1]
-      );
-    }
-
-    return totalDistance;
-  }
-
-  /**
-   * Calculate Distance between two points with lat and lon
-   *
-   * @param  {} wpt1 - A geographic point with lat and lon properties
-   * @param  {} wpt2 - A geographic point with lat and lon properties
-   *
-   * @returns {number} The distance between the two points, returned in kilometers
-   */
-  calculateDistanceBetweenPoints(wpt1: Point, wpt2: Point): number {
-    const earthRadiusKm = 6371;
-
-    const dLat = this.toRadian(wpt2.lat - wpt1.lat);
-    const dLon = this.toRadian(wpt2.lon - wpt1.lon);
-
-    const lat1 = this.toRadian(wpt1.lat);
-    const lat2 = this.toRadian(wpt2.lat);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return earthRadiusKm * c;
-  }
-
-  calculateGradeAdjustedDistanceBetweenPoints(
-    wpt1: Point,
-    wpt2: Point
-  ): number {
-    const latLongDist = this.calculateDistanceBetweenPoints(wpt1, wpt2);
-    const eleDiff = (wpt2.ele - wpt1.ele) / 1000;
-    return Math.sqrt(Math.pow(eleDiff, 2) + Math.pow(latLongDist, 2));
-  }
-
-  private toRadian(degree: number): number {
-    return (degree * Math.PI) / 180;
-  }
-
-  /**
-   * Generate Elevation Object from an array of points
-   *
-   * @param  {Point[]} points - An array of points with ele property
-   *
-   * @returns {Elevation} An object with negative and positive height difference and average, max and min altitude data
-   */
-  calculateElevationData(points: Point[]): Elevation {
-    let posEleChange = 0,
-      negEleChange = 0,
-      sum = 0;
-    const ret: Elevation = {} as Elevation,
-      elevations: number[] = [];
-
-    points.forEach((curPoint, index) => {
-      const curEle = curPoint.ele;
-      if (curEle) {
-        elevations.push(curEle);
-        sum += curEle;
-
-        if (index < points.length - 1) {
-          const nextEle = points[index + 1].ele;
-          const diff = nextEle - curEle;
-
-          if (diff < 0) {
-            negEleChange += diff;
-          } else if (diff > 0) {
-            posEleChange += diff;
-          }
-        }
-      }
-    });
-
-    ret.max = Math.max.apply(null, elevations);
-    ret.min = Math.min.apply(null, elevations);
-    ret.pos = Math.abs(posEleChange);
-    ret.neg = Math.abs(negEleChange);
-    ret.avg = sum / elevations.length;
-
-    return ret;
-  }
-
-  /**
-   * Generate a StreamJson object, which comprises easy-to-digest data points in separate arrays.
-   *
-   * @param  {Point[]} points - An array of points with ele property
-   *
-   * @returns {StreamJson} An object of arrays where for array A and array B, A[i] is the same timestamp as B[i]
-   */
-  toStreamJSON(points: Point[], options?: StreamJSONInputOptions): StreamJson {
-    const distance: number[] = [0];
-    const distanceBelowThreshold: number[] = [0];
-    const altitude: number[] = [points[0].ele];
-    const gradeAdjustedDistance: number[] = [0];
-    const elapsedTime: number[] = [0];
-    const movingTime: number[] = [0];
-    const extension: object[] = [];
-
-    for (let i = 1; i < points.length; i++) {
-      const point = points[i];
-      const prevPoint = points[i - 1];
-
-      const dist = this.calculateDistanceBetweenPoints(prevPoint, point);
-      distance[i] = dist;
-      gradeAdjustedDistance[i] =
-        this.calculateGradeAdjustedDistanceBetweenPoints(prevPoint, point);
-
-      altitude[i] = point.ele;
-
-      const date1 = new Date(prevPoint.time),
-        date2 = new Date(point.time);
-      elapsedTime[i] = Math.abs(date2.getTime() - date1.getTime()) / 1000;
-
-      const speedThreshold = options?.speedThreshold
-        ? options.speedThreshold
-        : 5.3;
-      if (dist * 3600 > speedThreshold) {
-        movingTime[i] = 1;
-        distanceBelowThreshold[i] = dist;
-      } else {
-        movingTime[i] = 0;
-        distanceBelowThreshold[i] = 0;
-      }
-
-      if (point.extensions) {
-        if (options && options.extensionProcessor) {
-          extension[i] = options.extensionProcessor(point.extensions);
-        } else {
-          extension[i] = point.extensions;
-        }
-      }
-    }
-
-    return {
-      distance,
-      altitude: altitude,
-      extension,
-      gradeAdjustedDistance,
-      elapsedTime,
-      movingTime,
-    } as StreamJson;
-  }
-
-  /**
-   * Export the GPX object to a GeoJSON formatted Object
-   *
-   * @returns {} a GeoJSON formatted Object
-   */
-  toGeoJSON(gpxJson: GpxJson): GeoJson {
-    const geoJson = {
-      type: "FeatureCollection",
-      features: [] as GeoJsonFeature[],
-      properties: {
-        name: gpxJson.metadata.name,
-        desc: gpxJson.metadata.desc,
-        time: gpxJson.metadata.time,
-        author: gpxJson.metadata.author,
-        link: gpxJson.metadata.link,
-      },
-    };
-
-    gpxJson.trk.forEach((track) => {
-      const feature: GeoJsonFeature = {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: [] as Point[],
-        },
-        properties: {
-          name: track.name,
-          cmt: track.cmt,
-          desc: track.desc,
-          src: track.src,
-          number: track.number,
-          link: track.link,
-          type: track.type,
-        },
-      };
-
-      track.trkseg.trkpt.forEach((pt) => {
-        const geoPt: Point = {
-          lon: pt.lon,
-          lat: pt.lat,
-          ele: pt.ele,
-          time: pt.time,
-        };
-
-        feature.geometry.coordinates.push(geoPt);
-      });
-
-      geoJson.features.push(feature);
-    });
-
-    gpxJson.rte?.forEach((route) => {
-      const feature: GeoJsonFeature = {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: [],
-        },
-        properties: {
-          name: route.name,
-          cmt: route.cmt,
-          desc: route.desc,
-          src: route.src,
-          number: route.number,
-          link: route.link,
-          type: route.type,
-        },
-      };
-
-      route.rtept.forEach((pt) => {
-        const geoPt: Point = {
-          lon: pt.lon,
-          lat: pt.lat,
-          ele: pt.ele,
-          time: pt.time,
-        };
-
-        feature.geometry.coordinates.push(geoPt);
-      });
-
-      geoJson.features.push(feature);
-    });
-
-    gpxJson.wpt?.forEach((pt) => {
-      const feature: GeoJsonFeature = {
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [],
-        },
-        properties: {
-          name: pt.name,
-          sym: pt.sym,
-          cmt: pt.cmt,
-          desc: pt.desc,
-        },
-      };
-
-      feature.geometry.coordinates = [
-        {
-          lon: pt.lon,
-          lat: pt.lat,
-          ele: pt.ele,
-        } as Point,
-      ];
-
-      geoJson.features.push(feature);
-    });
-
-    return geoJson;
   }
 }
