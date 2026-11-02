@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { theme } from "antd";
 import * as d3 from "d3";
 import { Gpx } from "../utils/gpxUtils";
@@ -21,12 +21,21 @@ const setupSvg = (svgRef: React.RefObject<SVGSVGElement | null>) => {
 };
 const margin = { top: 10, right: 0, bottom: 10, left: 10 };
 
+function chartPoints(gpx: Gpx): DataPoint[] {
+  return gpx.laps.flatMap((lap, index) =>
+    lap.elevations.map((elevation, elIndex, elevationsArray) => ({
+      lap: index + elIndex / elevationsArray.length,
+      elevation,
+    }))
+  );
+}
+
 export const ElevationGraph: React.FC = () => {
   const { token } = useToken();
   const svgRef = useRef<SVGSVGElement>(null);
-  const [chartData, setChartData] = useState<DataPoint[]>([]);
   const { hoveredSong, songs, sethoveredSong } = usePlaylistContext();
   const { gpx } = useCourseContext();
+  const chartData = useMemo(() => chartPoints(gpx), [gpx]);
 
   useEffect(() => {
     const { svg, xScale, height } = getChart(svgRef, gpx, chartData);
@@ -117,17 +126,6 @@ export const ElevationGraph: React.FC = () => {
         sethoveredSong(undefined);
       });
   }, [chartData, gpx, hoveredSong, sethoveredSong, songs]);
-
-  useEffect(() => {
-    const data: DataPoint[] = gpx.laps.flatMap((lap, index) =>
-      lap.elevations.map((elevation, elIndex, elevationsArray) => ({
-        lap: index + elIndex / elevationsArray.length,
-        elevation,
-      }))
-    );
-
-    setChartData(data);
-  }, [gpx]);
 
   useEffect(() => {
     const { svg, xScale, height, yScale } = getChart(svgRef, gpx, chartData);
