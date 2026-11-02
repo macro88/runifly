@@ -30,4 +30,4 @@ yarn lint
 yarn build
 ```
 
-`yarn lint` is ESLint with zero warnings. `yarn build` type-checks with `tsc` and then runs the Vite production build. Both need to succeed.
+`yarn lint` is ESLint with zero warnings. `yarn build` type-checks with `tsc` and then runs the Vite production build. Both need to succeed. Also run `yarn test`, `yarn doctor`, and `yarn aislop`. CI fails when doctor reports a finding, or when aislop scores below 96 or reports an error.

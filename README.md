@@ -59,7 +59,7 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
 ## Deploy
 
-A push to `main`, or a manual run of [`.github/workflows/build_deploy.yaml`](.github/workflows/build_deploy.yaml), publishes the production build to GitHub Pages at [https://runifly.com/](https://runifly.com/). Pull requests run the quality-score job and do not deploy.
+A push to `main`, or a manual run of [`.github/workflows/build_deploy.yaml`](.github/workflows/build_deploy.yaml), publishes the production build to GitHub Pages at [https://runifly.com/](https://runifly.com/). Pull requests run `yarn lint`, `yarn test`, `tsc`, and the Quality scores job, and do not deploy. Quality scores fails if `yarn doctor` reports a finding, or if `yarn aislop` scores below 96 or reports an error.
 
 That publish also writes `badges/aislop.json` and `badges/react-doctor.json` into the site. The shields at the top request those files, so the numbers are the scores from the latest publish of `main`. Green is 90 and up, yellow is 70 to 89, and red is below 70. The react-doctor badge shows error and warning counts when the score API does not return a number.
 
@@ -86,7 +86,7 @@ In progress: verification tests, a Spotify client fix, dependency upgrades, timi
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). One change per pull request. Run `yarn lint` and `yarn build` before opening it.
+See [CONTRIBUTING.md](CONTRIBUTING.md). One change per pull request. Run `yarn lint`, `yarn test`, and `yarn build` before opening it, plus `yarn doctor` and `yarn aislop` (no doctor findings; aislop at least 96, with no errors).
 
 ## Licence
 

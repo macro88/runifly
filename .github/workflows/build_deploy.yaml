@@ -20,6 +20,33 @@ permissions:
   deployments: write
 
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+    name: Lint, typecheck, and test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Yarn Classic
+        run: npm install -g yarn@1.22.22
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Test
+        run: yarn test
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Typecheck
+        run: yarn tsc --noEmit
+
   scores:
     runs-on: ubuntu-latest
     name: Quality scores
@@ -39,14 +66,14 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: React Doctor
-        id: doctor
-        continue-on-error: true
-        run: yarn doctor 2>&1 | tee doctor.txt
+        run: |
+          set -o pipefail
+          yarn doctor 2>&1 | tee doctor.txt
 
       - name: aislop
-        id: aislop
-        continue-on-error: true
-        run: yarn aislop 2>&1 | tee aislop.txt
+        run: |
+          set -o pipefail
+          yarn aislop 2>&1 | tee aislop.txt
 
       - name: Write job summary
         if: always()
@@ -54,9 +81,7 @@ jobs:
           {
             echo "## Quality scores"
             echo
-            echo "Advisory only. \`continue-on-error\` is set on both scans, so a low score or a non-zero exit does not fail this workflow."
-            echo
-            echo "react-doctor is \`yarn doctor\` (\`--no-score --no-supply-chain --blocking none\`). \`--no-score\` skips the score API, so this job has no numeric react-doctor score. aislop is \`yarn aislop\` (\`aislop scan\`) with \`ci.failBelow: 0\`."
+            echo "This job fails the check. \`yarn doctor\` exits non-zero on any finding and does not call the score API. \`yarn aislop\` exits non-zero when the score is below \`ci.failBelow\` (96) or an error-severity finding is present."
             echo
             echo "### react-doctor"
             echo
@@ -72,6 +97,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   publish:
+    needs: [checks, scores]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     name: Publish to GitHub Pages

@@ -108,7 +108,7 @@ The sample journey does not assert the course geometry below. Vitest covers it.
 
 ## Scores
 
-[AGENTS.md](../../../AGENTS.md) at the repository root requires `yarn verify` on every change, and forbids lowering the react-doctor or aislop score. This skill is the verify half. Also run `yarn doctor` and `yarn aislop`. Those two commands report scores and do not gate this pass line.
+[AGENTS.md](../../../AGENTS.md) at the repository root requires `yarn verify` on every change. The Quality scores job fails when `yarn doctor` reports a finding, or when `yarn aislop` scores below 96 or reports an error. Run both locally. They do not change this skill's pass line.
 
 ## Maintenance
 

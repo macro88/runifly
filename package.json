@@ -14,7 +14,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "verify": "node .cursor/skills/verify-runifly/scripts/verify.mjs",
-    "doctor": "react-doctor --no-score --no-supply-chain --blocking none --yes",
+    "doctor": "react-doctor --no-score --no-supply-chain --blocking warning --yes",
     "aislop": "aislop scan"
   },
   "dependencies": {

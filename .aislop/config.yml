@@ -1,9 +1,9 @@
 version: 1
 
-# Report the score without a score gate. `aislop ci` still exits 1 when an
-# error-severity diagnostic is present; the workflow uses continue-on-error.
+# `aislop scan` and `aislop ci` exit 1 when the score is below this value,
+# and when an error-severity finding is present.
 ci:
-  failBelow: 0
+  failBelow: 96
 
 telemetry:
   enabled: false
