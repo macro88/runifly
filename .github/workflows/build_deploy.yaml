@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
 
       - name: Install Yarn Classic
         run: npm install -g yarn@1.22.22
@@ -78,6 +78,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
 
       # Run your build step here if needed, e.g., for a React app
       - name: Install dependencies
