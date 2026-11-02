@@ -51,8 +51,7 @@ function calculateDistance(point1: GeoJsonPoint, point2: GeoJsonPoint): number {
 }
 
 function roundLength(length: number): number {
-  return length;
-  //return Math.floor(length);
+  return Math.round(length * 1000) / 1000;
 }
 
 function radiansToLength(radians: number): number {

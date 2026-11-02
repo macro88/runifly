@@ -100,7 +100,7 @@ Song kilometres and race times (the Vitest expectations and the six strings in t
 
 These are known bugs and are not asserted, on purpose:
 
-- Displayed course distance (`4`) is today's haversine in `src/utils/gpxUtils.tsx` (`earthRadiusMeters = 6371008.8`) of `fixtures/fixture-climb.gpx`, shown to two decimal kilometres. It will change if distance calculation changes. It does not use `aggregateLaps`.
+- Displayed course distance (`4`) is the haversine in `src/utils/gpxUtils.tsx` (`earthRadiusMeters = 6371008.8`) of `fixtures/fixture-climb.gpx`, rounded to the nearest millimetre and shown to two decimal kilometres. It does not use `aggregateLaps`.
 - The elevation chart is plotted per lap, not per metre. Do not assert path positions, axis ticks, or the shape of the climb. The sample climbs from 30 m to 180 m between kilometres 2 and 3 in the file. The chart is not the oracle for that climb.
 - `aggregateLaps` drops the overshoot past each whole kilometre and builds a fractional last lap (`lap: currentLap + totalDistance`, `totalDistance: 1 + totalDistance`). Do not assert lap count or lap totals.
 - `createFakeGpx` adds the fractional kilometre in kilometres onto a metre total. The journey replaces that fake course by loading the sample. Do not assert the fake course.

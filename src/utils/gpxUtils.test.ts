@@ -1,5 +1,6 @@
 import { DOMParser as XmldomParser } from "@xmldom/xmldom";
 import { beforeAll, describe, expect, it } from "vitest";
+import fixtureClimb from "../../fixtures/fixture-climb.gpx?raw";
 import { parseFile, totalDistance, type Gpx } from "./gpxUtils";
 
 /**
@@ -143,5 +144,19 @@ describe("parseFile geometry", () => {
 
   it("rejects a GPX with no points", async () => {
     await expect(load("<gpx></gpx>", "empty.gpx")).rejects.toThrow("Invalid GPX");
+  });
+});
+
+describe("measured length", () => {
+  it("rounds each designed kilometre of the sample course to 1000 m", async () => {
+    const course = await load(fixtureClimb, "fixture-climb.gpx");
+
+    expect(course.points.map((point) => point.distance)).toEqual([
+      0, 1000, 1000, 1000, 1000,
+    ]);
+    expect(course.points.map((point) => point.totalDistance)).toEqual([
+      0, 1000, 2000, 3000, 4000,
+    ]);
+    expect(displayedKilometres(course)).toBe(4);
   });
 });
