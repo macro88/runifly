@@ -28,5 +28,5 @@ Preconditions:
 - Clicking the course viewer opens a native file dialog. `setInputFiles` is the harness equivalent of the user choosing a file. A click followed by nothing is not a successful load.
 - Set the pace after this step. Changing the distance recomputes the pace from the target time already on screen.
 - The value `4` is today's haversine of this file, not a promise about a future distance fix. See the skill section "Baseline that later fixes will move".
-- A one-point file or a file with several track segments throws today. This journey does not use those files. When they are fixed, add a journey rather than changing this file's expectations.
+- A one-point file or a file with several track segments loads. This journey still uses the one-segment sample. Distance for the other shapes is covered by Vitest, not by changing this file's expectations.
 - The chart drawn for this course is not proof that the climb or the distance is right. It is plotted per lap.

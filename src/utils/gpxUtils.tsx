@@ -61,21 +61,24 @@ function radiansToLength(radians: number): number {
   return radians * factor;
 }
 
-function getPointDetails(points: GeoJsonPoint[]): PointDetail[] {
+function getPointDetails(points: GeoJsonPoint[], carryTotal = 0): PointDetail[] {
   const result: PointDetail[] = [];
 
   for (let i = 0; i < points.length; i++) {
-    const [lon, lat, ele] = points[i];
+    const [lon, lat, rawElevation] = points[i];
     const distance = i > 0 ? calculateDistance(points[i - 1], points[i]) : 0;
-    const totalDistance =
-      i > 0 ? roundLength(result[i - 1].totalDistance + distance) : 0;
-    const elevationGain = ele > points[i - 1]?.[2] ? ele - points[i - 1][2] : 0;
-    const elevationLoss = ele < points[i - 1]?.[2] ? points[i - 1][2] - ele : 0;
+    const previousTotal = i > 0 ? result[i - 1].totalDistance : carryTotal;
+    const totalDistance = roundLength(previousTotal + distance);
+    const previousElevation = i > 0 ? result[i - 1].elevation : 0;
+    const elevation = Number.isFinite(rawElevation) ? rawElevation : previousElevation;
+    const baseline = i > 0 ? previousElevation : elevation;
+    const elevationGain = elevation > baseline ? elevation - baseline : 0;
+    const elevationLoss = elevation < baseline ? baseline - elevation : 0;
 
     result.push({
       longitude: lon,
       latitude: lat,
-      elevation: ele,
+      elevation,
       distance,
       totalDistance,
       elevationGain,
@@ -149,6 +152,8 @@ function smoothPoints(
   originalPoints: GeoJsonPoint[],
   percentileCutoff: number
 ) {
+  if (originalPoints.length < 2) return originalPoints.slice();
+
   // Collect the distance from each point to the next point
   // length = originalPoints.length - 1
   const pairDistances = [];
@@ -180,37 +185,108 @@ function smoothPoints(
     smoothedPoints.push(originalPoints[idx]);
     idx += 1;
   }
-  // We remember to add on the last point
-  smoothedPoints.push(originalPoints[originalPoints.length - 1]);
+  // The inner loop can already have landed on the last point.
+  const lastPoint = originalPoints[originalPoints.length - 1];
+  if (smoothedPoints[smoothedPoints.length - 1] !== lastPoint) {
+    smoothedPoints.push(lastPoint);
+  }
   console.log(
     `After smoothing: ${originalPoints.length} -> ${smoothedPoints.length}`
   );
   return smoothedPoints;
 }
 
+type LoosePoint = { lat?: number; lon?: number; ele?: number };
+type LooseSegment = { trkpt?: LoosePoint | LoosePoint[] };
+type LooseTrack = { name?: unknown; trkseg?: LooseSegment | LooseSegment[] };
+type LooseRoute = { name?: unknown; rtept?: LoosePoint | LoosePoint[] };
+
+function asList<T>(value: T | T[] | undefined | null): T[] {
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function readName(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  return "";
+}
+
+function coordsOf(points: LoosePoint | LoosePoint[] | undefined): GeoJsonPoint[] {
+  const coords: GeoJsonPoint[] = [];
+  for (const point of asList(points)) {
+    if (point == null) continue;
+    const latitude = point.lat;
+    const longitude = point.lon;
+    if (latitude == null || longitude == null) continue;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+    const rawElevation = point.ele;
+    const elevation =
+      rawElevation != null && Number.isFinite(rawElevation) ? rawElevation : Number.NaN;
+    coords.push([longitude, latitude, elevation]);
+  }
+  return coords;
+}
+
+function chainsFromTracks(tracks: LooseTrack[]): { name: string; chains: GeoJsonPoint[][] } {
+  const chains: GeoJsonPoint[][] = [];
+  let name = "";
+  for (const track of tracks) {
+    if (!track) continue;
+    if (!name) name = readName(track.name);
+    for (const segment of asList(track.trkseg)) {
+      const coords = coordsOf(segment?.trkpt);
+      if (coords.length > 0) chains.push(coords);
+    }
+  }
+  return { name, chains };
+}
+
+function chainsFromRoutes(routes: LooseRoute[]): { name: string; chains: GeoJsonPoint[][] } {
+  const chains: GeoJsonPoint[][] = [];
+  let name = "";
+  for (const route of routes) {
+    if (!route) continue;
+    if (!name) name = readName(route.name);
+    const coords = coordsOf(route.rtept);
+    if (coords.length > 0) chains.push(coords);
+  }
+  return { name, chains };
+}
+
+function pointsFromChains(chains: GeoJsonPoint[][]): PointDetail[] {
+  const points: PointDetail[] = [];
+  for (const chain of chains) {
+    const cutoff =
+      chain.length > 3000 ? Math.min(23, chain.length * 0.001) : 0;
+    const smoothed = smoothPoints(chain, cutoff);
+    const carry = points.length === 0 ? 0 : points[points.length - 1].totalDistance;
+    // A new segment or track is a break in the recording. The gap is not distance.
+    points.push(...getPointDetails(smoothed, carry));
+  }
+  return points;
+}
+
 export async function parseFile(file: File): Promise<Gpx> {
   const parser: GpxParser = new GpxParser();
-
   const contents = await file.text();
-  const gpx = await parser.parse(contents);
-
-  const points = getPointDetails(
-    smoothPoints(
-      gpx.trk[0].trkseg.trkpt.map((p) => [p.lon, p.lat, p.ele]),
-      gpx.trk[0].trkseg.trkpt.length > 3000
-        ? Math.min(23, gpx.trk[0].trkseg.trkpt.length * 0.001)
-        : 0
-    )
-  );
-
-  const laps = aggregateLaps(points);
-
-  const x = {
-    name: gpx.trk[0].name,
-    points,
-    laps: laps,
+  const gpx = (await parser.parse(contents)) as {
+    trk?: LooseTrack | LooseTrack[];
+    rte?: LooseRoute | LooseRoute[];
   };
-  return x;
+
+  const tracks = chainsFromTracks(asList(gpx.trk));
+  const geometry =
+    tracks.chains.length > 0 ? tracks : chainsFromRoutes(asList(gpx.rte));
+  if (geometry.chains.length === 0) {
+    throw new Error("Invalid GPX");
+  }
+
+  const points = pointsFromChains(geometry.chains);
+  return {
+    name: geometry.name,
+    points,
+    laps: aggregateLaps(points),
+  };
 }
 
 export function aggregateLaps(points: PointDetail[]): Lap[] {
