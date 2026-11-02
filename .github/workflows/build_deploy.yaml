@@ -1,4 +1,4 @@
-name: Build and Publish Cloudflare Pages
+name: Build and publish GitHub Pages
 
 on:
   push:
@@ -74,36 +74,52 @@ jobs:
   publish:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    name: Publish to Cloudflare Pages
+    name: Publish to GitHub Pages
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+      pages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
 
-      # Run your build step here if needed, e.g., for a React app
+      - name: Install Yarn Classic
+        run: npm install -g yarn@1.22.22
+
       - name: Install dependencies
-        run: npm install
-        working-directory: ./
+        run: yarn install --frozen-lockfile
 
       - name: Build project
-        run: npm run build
-        working-directory: ./
+        run: yarn build
         env:
-          VITE_SPOTIFY_CLIENT_ID: ${{secrets.VITE_SPOTIFY_CLIENT_ID}}
-          VITE_REDIRECT_TARGET: ${{vars.VITE_REDIRECT_TARGET}}
+          VITE_SPOTIFY_CLIENT_ID: ${{ secrets.VITE_SPOTIFY_CLIENT_ID }}
+          VITE_REDIRECT_TARGET: ${{ vars.VITE_REDIRECT_TARGET }}
 
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: ${{ vars.CLOUDFLARE_PROJECT_NAME }}
-          directory: ./dist
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          path: ./dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
 
       # Increment the version
       - name: Bump version and push tag
@@ -116,17 +132,16 @@ jobs:
           WITH_V: true
           DEFAULT_BUMP: ${{ github.event.inputs.bump }}
 
-      # Create a GitHub release
+      # actions/create-release is archived and has no release that runs on
+      # current GitHub-hosted runners. gh is already on the runner.
       - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.bump_version.outputs.new_tag }}
-          release_name: Release ${{ steps.bump_version.outputs.new_tag }}
-          body: |
-            Changes in this release:
-            - See GitHub
-          draft: false
-          prerelease: false
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.bump_version.outputs.new_tag }}
+        run: |
+          notes=$(printf '%s\n' "Changes in this release:" "- See GitHub")
+          gh release create "$RELEASE_TAG" \
+            --target "$GITHUB_SHA" \
+            --title "Release ${RELEASE_TAG}" \
+            --notes "$notes" \
+            --verify-tag
