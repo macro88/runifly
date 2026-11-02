@@ -133,7 +133,7 @@ export const ElevationGraph: React.FC = () => {
       .x((d) => kilometreX(d[0], routeKilometres, width))
       .y0(height)
       .y1((d) => yScale(d[1]))
-      .curve(d3.curveCardinal);
+      .curve(d3.curveMonotoneX);
 
     const chartDataTuples = chartData.map((d) => [d.kilometre, d.elevation]) as [
       number,
