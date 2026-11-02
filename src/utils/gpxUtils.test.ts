@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import fixtureClimb from "../../fixtures/fixture-climb.gpx?raw";
 import {
   aggregateLaps,
+  createFakeGpx,
   parseFile,
   totalDistance,
   type Gpx,
@@ -206,6 +207,50 @@ describe("aggregateLaps", () => {
       [30],
       [180],
       [180],
+    ]);
+  });
+});
+
+describe("createFakeGpx", () => {
+  it("stores a fractional kilometre in metres", () => {
+    const course = createFakeGpx("half", 4.5, 5);
+
+    expect(totalDistance(course)).toBe(4500);
+    expect(course.points.reduce((sum, point) => sum + point.distance, 0)).toBe(
+      4500
+    );
+    expect(course.laps.map((lap) => lap.totalDistance)).toEqual([
+      1000, 1000, 1000, 1000, 500,
+    ]);
+    expect(course.points[course.points.length - 1].time).toBe(22.5);
+  });
+
+  it("builds a course shorter than one kilometre", () => {
+    const course = createFakeGpx("short", 0.25, 5);
+
+    expect(course.points).toHaveLength(1);
+    expect(totalDistance(course)).toBe(250);
+    expect(course.laps.map((lap) => lap.totalDistance)).toEqual([250]);
+    expect(course.points[0].time).toBe(1.25);
+  });
+
+  it("keeps the marathon fraction as 196 m", () => {
+    const course = createFakeGpx("fake", 42.196, 5);
+
+    expect(totalDistance(course)).toBe(42196);
+    expect(course.laps[course.laps.length - 1].totalDistance).toBe(196);
+    expect(course.laps.reduce((sum, lap) => sum + lap.totalDistance, 0)).toBe(
+      42196
+    );
+  });
+
+  it("leaves a whole number of kilometres on the kilometre", () => {
+    const course = createFakeGpx("whole", 4, 5);
+
+    expect(course.points).toHaveLength(4);
+    expect(totalDistance(course)).toBe(4000);
+    expect(course.laps.map((lap) => lap.totalDistance)).toEqual([
+      1000, 1000, 1000, 1000,
     ]);
   });
 });

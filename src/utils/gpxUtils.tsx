@@ -106,13 +106,13 @@ export function createFakeGpx(
   distance: number,
   pace: number
 ): Gpx {
-  const distanceInt = Math.floor(distance);
-  const distanceFraction = distance - distanceInt;
+  const wholeKilometres = Math.floor(distance);
+  const fractionMeters = Math.round((distance - wholeKilometres) * 1000);
   const amplitude = 10; // The height of the wave
   const frequency = 0.01; // The frequency of the wave
 
   const points: PointDetail[] = Array.from(
-    { length: distanceInt },
+    { length: wholeKilometres },
     (_, idx) => {
       const i = idx + 1;
       return {
@@ -129,21 +129,30 @@ export function createFakeGpx(
     }
   );
 
-  points[points.length - 1].elevation = 50;
-  points[0].elevation = 50;
-
-  if (distanceFraction > 0) {
-    points[points.length - 1].distance = distanceFraction;
-    points[points.length - 1].totalDistance += distanceFraction;
-    points[points.length - 1].time += pace * distanceFraction;
+  if (fractionMeters > 0) {
+    const totalMeters = wholeKilometres * 1000 + fractionMeters;
+    const i = points.length + 1;
+    points.push({
+      longitude: i,
+      latitude: i,
+      elevation: 50,
+      distance: fractionMeters,
+      totalDistance: totalMeters,
+      elevationGain: 0,
+      elevationLoss: 0,
+      time: (totalMeters / 1000) * pace,
+    });
   }
 
-  const laps = aggregateLaps(points);
+  if (points.length > 0) {
+    points[0].elevation = 50;
+    points[points.length - 1].elevation = 50;
+  }
 
   return {
-    name: name,
-    points: points,
-    laps,
+    name,
+    points,
+    laps: aggregateLaps(points),
   };
 }
 

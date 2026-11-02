@@ -103,7 +103,7 @@ These are known bugs and are not asserted, on purpose:
 - Displayed course distance (`4`) is the haversine in `src/utils/gpxUtils.tsx` (`earthRadiusMeters = 6371008.8`) of `fixtures/fixture-climb.gpx`, rounded to the nearest millimetre and shown to two decimal kilometres. It does not use `aggregateLaps`.
 - The elevation chart is plotted per lap, not per metre. Do not assert path positions, axis ticks, or the shape of the climb. The sample climbs from 30 m to 180 m between kilometres 2 and 3 in the file. The chart is not the oracle for that climb.
 - `aggregateLaps` closes a lap at each 1000 m and the last lap is the remainder. Lap distances sum to the route length. The sample's points sit on whole kilometres, so it is four laps of 1000 m. This journey does not read lap totals.
-- `createFakeGpx` adds the fractional kilometre in kilometres onto a metre total. The journey replaces that fake course by loading the sample. Do not assert the fake course.
+- `createFakeGpx` stores a fractional kilometre as metres on an extra point. The journey replaces that generated course by loading the sample. Do not assert the fake course.
 - A GPX with several segments or tracks, a route, or one point loads. Distance is the haversine along each continuous segment or route. The straight line across a break between segments or tracks is not added. A missing elevation is carried forward, or 0 when nothing earlier has one. This journey still loads the one-segment sample. Vitest covers the other shapes. Do not weaken this journey.
 
 ## Scores
