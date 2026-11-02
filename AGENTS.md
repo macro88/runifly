@@ -54,3 +54,13 @@ Baseline from `yarn aislop` on this commit:
 | 1 | info | `security/dependency-audit-skipped` |
 
 Do not lower 61. The goal is 100, with `failBelow` raised to a hard gate in a later pull request.
+
+## Pull requests
+
+After opening or pushing to a pull request, wait until CI has finished and at least 10 full minutes have passed, then check for the GitHub Copilot review.
+
+Respond to every Copilot review comment and every human review comment. Fix the point, or reply explaining why you disagree. Then resolve the thread. Leave no thread open.
+
+A pull request's own changes must not break CI. A failure that already exists on `main` is not that pull request's job to fix. Say so in the pull request description.
+
+Only report a pull request as ready once all of the above is done.
