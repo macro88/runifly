@@ -24,15 +24,6 @@ export default tseslint.config(
   },
   {
     files: ["**/*.{ts,tsx}"],
-    rules: {
-      // Pace, playlist timing, the fixture playlist, and the elevation chart
-      // still publish state from effects. Deriving that state would change
-      // the timing behaviour this app locks in. Leave the rule off.
-      "react-hooks/set-state-in-effect": "off",
-    },
-  },
-  {
-    files: ["**/*.{ts,tsx}"],
     ...reactRefresh.configs.vite,
   },
 );
