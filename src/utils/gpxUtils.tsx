@@ -60,7 +60,11 @@ function radiansToLength(radians: number): number {
   return radians * factor;
 }
 
-function getPointDetails(points: GeoJsonPoint[], carryTotal = 0): PointDetail[] {
+function getPointDetails(
+  points: GeoJsonPoint[],
+  carryTotal = 0,
+  carryElevation = 0
+): PointDetail[] {
   const result: PointDetail[] = [];
 
   for (let i = 0; i < points.length; i++) {
@@ -68,7 +72,7 @@ function getPointDetails(points: GeoJsonPoint[], carryTotal = 0): PointDetail[] 
     const distance = i > 0 ? calculateDistance(points[i - 1], points[i]) : 0;
     const previousTotal = i > 0 ? result[i - 1].totalDistance : carryTotal;
     const totalDistance = roundLength(previousTotal + distance);
-    const previousElevation = i > 0 ? result[i - 1].elevation : 0;
+    const previousElevation = i > 0 ? result[i - 1].elevation : carryElevation;
     const elevation = Number.isFinite(rawElevation) ? rawElevation : previousElevation;
     const baseline = i > 0 ? previousElevation : elevation;
     const elevationGain = elevation > baseline ? elevation - baseline : 0;
@@ -263,9 +267,15 @@ function pointsFromChains(chains: GeoJsonPoint[][]): PointDetail[] {
     const cutoff =
       chain.length > 3000 ? Math.min(23, chain.length * 0.001) : 0;
     const smoothed = smoothPoints(chain, cutoff);
-    const carry = points.length === 0 ? 0 : points[points.length - 1].totalDistance;
+    const previous = points[points.length - 1];
     // A new segment or track is a break in the recording. The gap is not distance.
-    points.push(...getPointDetails(smoothed, carry));
+    points.push(
+      ...getPointDetails(
+        smoothed,
+        previous?.totalDistance ?? 0,
+        previous?.elevation ?? 0
+      )
+    );
   }
   return points;
 }

@@ -133,6 +133,33 @@ describe("parseFile geometry", () => {
     await expect(load(xml, "still.gpx")).rejects.toThrow("Invalid GPX");
   });
 
+  it("carries the last elevation into a later segment that has none", async () => {
+    const first = north(0);
+    const second = north(1);
+    const gap = north(0, START_LON + 1);
+    const gapEnd = north(1, START_LON + 1);
+    const sea = north(2, START_LON + 1);
+    const xml = `<gpx><trk><name>Carry</name><trkseg>${trkpt(first.lat, first.lon, 40)}${trkpt(second.lat, second.lon, 80)}</trkseg><trkseg>${trkpt(gap.lat, gap.lon)}${trkpt(gapEnd.lat, gapEnd.lon, 90)}${trkpt(sea.lat, sea.lon, 0)}</trkseg></trk></gpx>`;
+
+    const course = await load(xml, "carry.gpx");
+
+    expect(course.points.map((point) => point.elevation)).toEqual([40, 80, 80, 90, 0]);
+    expect(course.points[3].elevationGain).toBe(10);
+  });
+
+  it("carries the last elevation into a later track that has none", async () => {
+    const a0 = north(0);
+    const a1 = north(1);
+    const b0 = north(0, START_LON + 1);
+    const b1 = north(1, START_LON + 1);
+    const xml = `<gpx><trk><name>Out</name><trkseg>${trkpt(a0.lat, a0.lon, 25)}${trkpt(a1.lat, a1.lon, 55)}</trkseg></trk><trk><name>Back</name><trkseg>${trkpt(b0.lat, b0.lon)}${trkpt(b1.lat, b1.lon, 60)}</trkseg></trk></gpx>`;
+
+    const course = await load(xml, "carry-tracks.gpx");
+
+    expect(course.points.map((point) => point.elevation)).toEqual([25, 55, 55, 60]);
+    expect(course.points[3].elevationGain).toBe(5);
+  });
+
   it("keeps the distance when elevation is missing", async () => {
     const start = north(0);
     const end = north(1);
