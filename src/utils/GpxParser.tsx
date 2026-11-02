@@ -80,9 +80,11 @@ function elementContents(el: Element): XmlValue {
   for (let i = 0; i < attributes.length; i += 1) {
     const attr = attributes.item(i);
     if (!attr) continue;
+    // Qualified name, matching xml2js. localName would turn xmlns:trk into trk
+    // and collide with a <trk> child.
     assignOrPush(
       obj,
-      String(parseNumbers(attr.localName || attr.name)),
+      String(parseNumbers(attr.name)),
       parseNumbers(attr.value)
     );
   }

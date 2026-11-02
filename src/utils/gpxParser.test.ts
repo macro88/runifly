@@ -67,6 +67,17 @@ describe("GpxParser", () => {
     ]);
   });
 
+  it("does not treat a prefixed xmlns attribute as a track", async () => {
+    const xml = `<gpx xmlns:trk="urn:vendor"><trk><name>Namespaced</name><trkseg><trkpt lat="1" lon="2"><ele>3</ele></trkpt><trkpt lat="4" lon="5"><ele>6</ele></trkpt></trkseg></trk></gpx>`;
+    const parsed = await new GpxParser().parse(xml);
+    expect(parsed.trk).toHaveLength(1);
+    expect(parsed.trk[0].name).toBe("Namespaced");
+    expect(parsed.trk[0].trkseg.trkpt).toEqual([
+      { lat: 1, lon: 2, ele: 3 },
+      { lat: 4, lon: 5, ele: 6 },
+    ]);
+  });
+
   it("leaves a single trkpt as an object", async () => {
     const xml = `<gpx><trk><name>One</name><trkseg><trkpt lat="1.0" lon="2"><ele>3</ele></trkpt></trkseg></trk></gpx>`;
     const parsed = await new GpxParser().parse(xml);
