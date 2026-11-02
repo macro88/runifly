@@ -36,9 +36,9 @@ The helper builds, then starts Vite preview itself. Do not start a second server
 2. `yarn lint` (`eslint . --max-warnings 0`).
 3. `yarn build` (`tsc && vite build`). The helper sets `VITE_SPOTIFY_CLIENT_ID=verify-not-a-secret` and `VITE_REDIRECT_TARGET` to the preview origin. Those values are dummies. They are not Spotify credentials. The helper overrides any `VITE_SPOTIFY_*` values already in the environment so a real client id is not baked into `dist/`.
 4. `yarn preview --host 127.0.0.1 --port $VERIFY_PORT --strictPort`. `VERIFY_PORT` defaults to `4173`. If that port is already taken, the helper stops and tells you to pick another. It does not kill the existing process.
-5. Ready means `GET http://127.0.0.1:$VERIFY_PORT/runifly/?fixtures=1` returns HTTP 200 and the body contains `id="root"`. The production build's Vite base is `/runifly/`, and `vite preview` serves that build there. Preview logs go to `.cursor/skills/verify-runifly/evidence/preview.log`.
+5. Ready means `GET http://127.0.0.1:$VERIFY_PORT/?fixtures=1` returns HTTP 200 and the body contains `id="root"`. The production build's Vite base is `/`, and `vite preview` serves that build at the root. Preview logs go to `.cursor/skills/verify-runifly/evidence/preview.log`.
 
-Open the app only at `/runifly/?fixtures=1`. Without that query the shared Spotify auth effect starts PKCE and the browser is sent to `accounts.spotify.com`. The helper aborts any request whose host is not `127.0.0.1` or `localhost` and fails the run if one was attempted.
+Open the app only at `/?fixtures=1`. Without that query the shared Spotify auth effect starts PKCE and the browser is sent to `accounts.spotify.com`. The helper aborts any request whose host is not `127.0.0.1` or `localhost` and fails the run if one was attempted.
 
 Two verifications need two ports. Set `VERIFY_PORT` on the second. Never drive a preview this run did not start.
 
@@ -47,8 +47,8 @@ Two verifications need two ports. Set `VERIFY_PORT` on the second. Never drive a
 The helper runs this after launch, before it touches the page. Run the same checks yourself when a later step looks wrong.
 
 - Preview process is still alive. `/proc/net/tcp` has a LISTEN socket on `127.0.0.1:<port>`, and a pid in the preview process tree holds that socket inode under `/proc/<pid>/fd`. The helper does not use `ss` or `lsof`.
-- `GET /runifly/?fixtures=1` is HTTP 200 and contains `id="root"`.
-- After the browser opens, the header reads `Runifly` and `Fixtures`, and the URL is still `http://127.0.0.1:<port>/runifly/?fixtures=1`.
+- `GET /?fixtures=1` is HTTP 200 and contains `id="root"`.
+- After the browser opens, the header reads `Runifly` and `Fixtures`, and the URL is still `http://127.0.0.1:<port>/?fixtures=1`.
 
 A doctor failure means do not drive. Read `evidence/preview.log`, stop the preview this run started, and launch again.
 
@@ -56,7 +56,7 @@ A doctor failure means do not drive. Read `evidence/preview.log`, stop the previ
 
 The helper drives one journey that covers the feature map. Selectors below are what it uses.
 
-1. Open `http://127.0.0.1:<port>/runifly/?fixtures=1` with Chromium headless, viewport 1440×900, `TZ=UTC`. UTC matters: the pace control stores a dayjs value from epoch milliseconds, and `mm:ss` is rendered in the browser's local zone.
+1. Open `http://127.0.0.1:<port>/?fixtures=1` with Chromium headless, viewport 1440×900, `TZ=UTC`. UTC matters: the pace control stores a dayjs value from epoch milliseconds, and `mm:ss` is rendered in the browser's local zone.
 2. Click the row whose text contains `Fixture Songs` (3 songs, description `Offline timing fixture`). The song table gains `Warm Up`, `The Climb`, and `Easy Descent`. Those song rows are `<tr>` elements with `role="button"` because the drag-and-drop attributes are spread onto the row. Do not look them up with `getByRole("row")`. Use the `tr` that contains the song name, and read `td` text rather than `role="cell"`.
 3. `setInputFiles` on the file input labelled `Course GPX file` (`fixtures/fixture-climb.gpx`). Do not click the course viewer. That click opens a native file dialog the harness cannot complete. Drag-and-drop is a second entry point and is not the one this journey uses.
 4. The level-1 heading becomes `Fixture Climb`. The spinbutton named `Distance (km)` reads `4`. The visible label is not wired to the input by itself. The input carries `aria-label="Distance (km)"`.

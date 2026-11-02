@@ -2,11 +2,12 @@
  * Spotify accepts HTTPS redirect URIs, and HTTP only for 127.0.0.1 with a port.
  * localhost is rejected.
  *
- * The path comes from Vite's base (`import.meta.env.BASE_URL`): `/` while
- * developing, `/runifly/` in the GitHub Pages build. Local sign-in keeps the
+ * The path comes from Vite's base (`import.meta.env.BASE_URL`), which is `/`
+ * in local development and in the production build. Local sign-in keeps the
  * loopback origin from `VITE_REDIRECT_TARGET`, so an address bar of localhost
  * still returns to 127.0.0.1. On any other host the origin is the page that
- * is open, and the path is that base.
+ * is open, and the path is that base. On https://runifly.com/ the callback is
+ * https://runifly.com/.
  */
 export function isSpotifyRedirectUri(value: string | undefined): boolean {
   if (!value) return false;
