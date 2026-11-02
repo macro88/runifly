@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Form, Space, TimePicker, InputNumber } from "antd";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
@@ -8,9 +8,7 @@ dayjs.extend(duration);
 
 type Duration = ReturnType<typeof dayjs.duration>;
 
-interface TargetTimePaceProps {}
-
-const TargetTimePace: React.FC<TargetTimePaceProps> = () => {
+const TargetTimePace = () => {
   const { distance, setDistance, setPace } = useCourseContext();
 
   const defaultPace = dayjs.duration(5.5 * 60, "seconds");

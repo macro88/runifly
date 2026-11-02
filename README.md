@@ -12,7 +12,7 @@ There is no screenshot in the repository.
 
 ## Requirements
 
-- Node.js 22.13 or newer on the 22 LTS line. `.nvmrc` selects 22, and `package.json` `engines.node` is `^22.13.0`. CI installs that file with `actions/setup-node`. `expo-doctor` (a dependency of `react-doctor`) rejects Node 20. Vite 5 still declares `node: ^18.0.0 || >=20.0.0`.
+- Node.js 22.13 or newer on the 22 LTS line. `.nvmrc` selects 22, and `package.json` `engines.node` is `^22.13.0`. CI installs that file with `actions/setup-node`. `expo-doctor` (a dependency of `react-doctor`) rejects Node 20. Vite 8 declares `node: ^20.19.0 || >=22.12.0`.
 - [Yarn Classic](https://classic.yarnpkg.com/) 1.x. `yarn.lock` is a Yarn 1 lockfile.
 - A Spotify account.
 - For a Spotify app in development mode: the owner of the app needs an active Spotify Premium subscription, and each person who uses the app must be on its allowlist. Development mode allows up to five users.
@@ -52,7 +52,7 @@ yarn dev --host 127.0.0.1 --port 5173 --strictPort
 
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
-`yarn dev` with no extra flags starts Vite 5.0.12 on port 5173 and prints `http://localhost:5173/`. That process listens on localhost. Spotify rejects `localhost` as a redirect URI, and a connection to `http://127.0.0.1:5173` is refused while the server is bound that way. `--host 127.0.0.1` makes Vite serve `http://127.0.0.1:5173/`. The dev base is `/`, so the redirect URI is `http://127.0.0.1:5173/` when `VITE_REDIRECT_TARGET` names that loopback origin. `--strictPort` makes Vite exit when 5173 is already taken, so the redirect URI stays on that port.
+`yarn dev` with no extra flags starts Vite on port 5173 and prints `http://localhost:5173/`. That process listens on localhost. Spotify rejects `localhost` as a redirect URI, and a connection to `http://127.0.0.1:5173` is refused while the server is bound that way. `--host 127.0.0.1` makes Vite serve `http://127.0.0.1:5173/`. The dev base is `/`, so the redirect URI is `http://127.0.0.1:5173/` when `VITE_REDIRECT_TARGET` names that loopback origin. `--strictPort` makes Vite exit when 5173 is already taken, so the redirect URI stays on that port.
 
 ## Deploy
 

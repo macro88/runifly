@@ -1,5 +1,4 @@
 import { Alert, Col, Row, Space, Typography, Image, Layout, theme } from "antd";
-import React from "react";
 import TargetTimePace from "./TargetTimePace";
 import CourseViewer from "./CourseViewer";
 import { useCourseContext } from "../data/CourseContext";
@@ -12,11 +11,7 @@ import { usePlaylistContext } from "../data/PlaylistContext";
 import ResetButton from "./ResetButton";
 import SyncButton from "./SyncButton";
 
-interface PlayListManagerProps {
-  // Define your component props here
-}
-
-const PlayListManager: React.FC<PlayListManagerProps> = () => {
+const PlayListManager = () => {
   const { name, setName } = useCourseContext();
   const { playlistKey, playlistImage, playlistError } = usePlaylistContext();
   const {
