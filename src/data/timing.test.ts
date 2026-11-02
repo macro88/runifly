@@ -72,7 +72,7 @@ describe("updateTimingData", () => {
     const input = FIXTURE_TRACKS.map((track) =>
       song(track.name, track.duration_ms / 1000)
     );
-    const before = JSON.parse(JSON.stringify(input)) as RuniflySong[];
+    const before = structuredClone(input);
 
     updateTimingData(input, PACE_SECONDS_PER_KM);
 
