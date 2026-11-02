@@ -33,6 +33,21 @@ interface TableParams {
   pagination?: TablePaginationConfig;
 }
 
+const FIXTURE_PLAYLIST_ROWS: DataType[] = [
+  {
+    key: FIXTURE_PLAYLIST_KEY,
+    name: FIXTURE_PLAYLIST_NAME,
+    description: FIXTURE_PLAYLIST_DESCRIPTION,
+    snapshotId: "fixture-snapshot",
+    image: undefined,
+    songs: FIXTURE_TRACKS.length,
+    ownerId: "",
+    collaborative: false,
+  },
+];
+
+const showingFixtures = isFixturesMode();
+
 const columns: ColumnsType<DataType> = [
   {
     title: "Select a Playlist",
@@ -56,8 +71,10 @@ const columns: ColumnsType<DataType> = [
 ];
 
 const Playlists: React.FC = () => {
-  const [dataSource, setDataSource] = useState<DataType[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [fetchedPlaylists, setFetchedPlaylists] = useState<DataType[]>([]);
+  const [openLoads, setOpenLoads] = useState(0);
+  const dataSource = showingFixtures ? FIXTURE_PLAYLIST_ROWS : fetchedPlaylists;
+  const loading = openLoads > 0;
   const {
     setplaylistKey,
     setplaylistImage,
@@ -74,43 +91,28 @@ const Playlists: React.FC = () => {
   });
 
   const { sdk }: { sdk: SpotifyApi | null } = useSpotifyAuth();
+  const page = tableParams.pagination?.current ?? 1;
+  const pageSize = tableParams.pagination?.pageSize ?? 50;
 
   useEffect(() => {
-    if (isFixturesMode()) {
-      setDataSource([
-        {
-          key: FIXTURE_PLAYLIST_KEY,
-          name: FIXTURE_PLAYLIST_NAME,
-          description: FIXTURE_PLAYLIST_DESCRIPTION,
-          snapshotId: "fixture-snapshot",
-          image: undefined,
-          songs: FIXTURE_TRACKS.length,
-          ownerId: "",
-          collaborative: false,
-        },
-      ]);
-      return;
-    }
-
-    if (!sdk) return;
+    if (showingFixtures || !sdk) return;
 
     let cancelled = false;
 
     (async () => {
-      setLoading(true);
+      setOpenLoads((count) => count + 1);
       try {
-        const page: Page<SimplifiedPlaylist> | undefined =
+        const playlistPage: Page<SimplifiedPlaylist> | undefined =
           await sdk.currentUser.playlists.playlists(
-            Math.min(50, tableParams?.pagination?.pageSize ?? 50) as MaxInt<50>,
-            (tableParams?.pagination?.pageSize ?? 50) *
-              ((tableParams?.pagination?.current ?? 0) - 1)
+            Math.min(50, pageSize) as MaxInt<50>,
+            pageSize * (page - 1)
           );
 
         if (cancelled) return;
 
-        if (page && page.items) {
-          setDataSource(
-            page.items.map((playlist) => {
+        if (playlistPage && playlistPage.items) {
+          setFetchedPlaylists(
+            playlistPage.items.map((playlist) => {
               const counted = playlist as SimplifiedPlaylist & {
                 items?: { total?: number } | null;
               };
@@ -133,23 +135,21 @@ const Playlists: React.FC = () => {
             ...current,
             pagination: {
               ...current.pagination,
-              total: page.total,
+              total: playlistPage.total,
             },
           }));
         } else {
-          setDataSource([]);
+          setFetchedPlaylists([]);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        setOpenLoads((count) => count - 1);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-    // tableParams is read through its serialised key.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(tableParams), sdk]);
+  }, [page, pageSize, sdk]);
 
   const handleTableChange: TableProps<DataType>["onChange"] = (
     pagination,
@@ -164,7 +164,7 @@ const Playlists: React.FC = () => {
 
     // `dataSource` is useless since `pageSize` changed
     if (pagination.pageSize !== tableParams.pagination?.pageSize) {
-      setDataSource([]);
+      setFetchedPlaylists([]);
     }
   };
 
