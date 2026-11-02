@@ -1,7 +1,7 @@
 # Runifly
 
-[![aislop](https://img.shields.io/endpoint?url=https%3A%2F%2Fmacro88.github.io%2Frunifly%2Fbadges%2Faislop.json)](https://github.com/macro88/runifly/actions/workflows/build_deploy.yaml)
-[![react-doctor](https://img.shields.io/endpoint?url=https%3A%2F%2Fmacro88.github.io%2Frunifly%2Fbadges%2Freact-doctor.json)](https://github.com/macro88/runifly/actions/workflows/build_deploy.yaml)
+[![aislop](https://img.shields.io/endpoint?url=https%3A%2F%2Frunifly.com%2Fbadges%2Faislop.json)](https://github.com/macro88/runifly/actions/workflows/build_deploy.yaml)
+[![react-doctor](https://img.shields.io/endpoint?url=https%3A%2F%2Frunifly.com%2Fbadges%2Freact-doctor.json)](https://github.com/macro88/runifly/actions/workflows/build_deploy.yaml)
 
 Runifly is a client-only web app for arranging a Spotify playlist against a route. A runner or hiker loads a GPX file, sets a pace, and connects Spotify. The app times the playlist against the route, so a song can be placed where it will be playing, for example a harder track for a hill.
 
@@ -28,7 +28,7 @@ There is no screenshot in the repository.
 2. New apps start in development mode. The app owner needs Spotify Premium. Under the app's settings, open user management and add each person who will sign in, including yourself. The allowlist holds up to five users. Spotify rejects API calls for an account that is not on the list.
 3. Add a redirect URI. The app builds it from Vite's base and does not hard-code the path.
    - Local development: `http://127.0.0.1:5173/`. Spotify rejects `localhost`. HTTP is accepted for a loopback address. The dev server base is `/`. `VITE_REDIRECT_TARGET` may be `http://127.0.0.1:5173` or the same URI with a trailing slash. Sign-in keeps that loopback host, so it still returns to port 5173 when the address bar says `localhost`. The app does not start sign-in unless the configured value is `http://127.0.0.1:<port>` or an `https://` URL.
-   - GitHub Pages: `https://macro88.github.io/runifly/`. The production base is `/runifly/`. On that site the callback is the page origin plus the base.
+   - Production, at [https://runifly.com/](https://runifly.com/): the production base is `/`. On that site the callback is the page origin plus the base, `https://runifly.com/`.
 4. Copy the Client ID into `.env`, as below. Leave the client secret out of the repository. PKCE does not use it, and any `VITE_` variable is compiled into the JavaScript the browser downloads.
 
 ### Environment
@@ -44,7 +44,7 @@ cp .env.example .env
 
 `.env` is listed in `.gitignore`. The committed template is `.env.example`.
 
-The GitHub Actions workflow that publishes `main` supplies `VITE_SPOTIFY_CLIENT_ID` from a repository secret and `VITE_REDIRECT_TARGET` from a repository variable at build time. That build does not read `.env`. The variable has to be an `https://` URL. On the published site the callback is still `https://macro88.github.io/runifly/`, from the page origin and the `/runifly/` base.
+The GitHub Actions workflow that publishes `main` supplies `VITE_SPOTIFY_CLIENT_ID` from a repository secret and `VITE_REDIRECT_TARGET` from a repository variable at build time. That build does not read `.env`. The variable has to be an `https://` URL. On [https://runifly.com/](https://runifly.com/) the callback is `https://runifly.com/`, from the page origin and the `/` base.
 
 ### Install and run
 
@@ -59,18 +59,18 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
 ## Deploy
 
-A push to `main`, or a manual run of [`.github/workflows/build_deploy.yaml`](.github/workflows/build_deploy.yaml), publishes the production build to GitHub Pages at [https://macro88.github.io/runifly/](https://macro88.github.io/runifly/). Pull requests run the quality-score job and do not deploy.
+A push to `main`, or a manual run of [`.github/workflows/build_deploy.yaml`](.github/workflows/build_deploy.yaml), publishes the production build to GitHub Pages at [https://runifly.com/](https://runifly.com/). Pull requests run the quality-score job and do not deploy.
 
 That publish also writes `badges/aislop.json` and `badges/react-doctor.json` into the site. The shields at the top request those files, so the numbers are the scores from the latest publish of `main`. Green is 90 and up, yellow is 70 to 89, and red is below 70. The react-doctor badge shows error and warning counts when the score API does not return a number.
 
-The publish job installs with `yarn install --frozen-lockfile`, then runs `yarn build`. The production Vite base is `/runifly/`, so scripts, the favicon, and the Spotify callback sit under that path. There is no client-side router. Spotify returns to `https://macro88.github.io/runifly/` with query parameters, and GitHub Pages serves `index.html` for that directory. The build does not add a `404.html` copy.
+The publish job installs with `yarn install --frozen-lockfile`, then runs `yarn build`. The production Vite base is `/`, so scripts, the favicon, and the Spotify callback sit at the domain root. There is no client-side router. Spotify returns to `https://runifly.com/` with query parameters, and GitHub Pages serves `index.html` for `/`. The build does not add a `404.html` copy. The custom domain is the repository Pages setting. Publishing with GitHub Actions does not read a `CNAME` file, so this repository does not add one.
 
 After a successful Pages deployment the job bumps a version tag and creates a GitHub release. The tag step is `anothrNick/github-tag-action`. The release step is `gh release create` on the runner.
 
 Two settings live outside this repository. Do both before the first production sign-in:
 
-1. On GitHub, open **Settings → Pages → Build and deployment** and set **Source** to **GitHub Actions**.
-2. In the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard), add this Redirect URI exactly: `https://macro88.github.io/runifly/`
+1. On GitHub, open **Settings → Pages → Build and deployment** and set **Source** to **GitHub Actions**. Set **Custom domain** to `runifly.com`.
+2. In the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard), add this Redirect URI exactly: `https://runifly.com/`
 
 ## Known issues
 

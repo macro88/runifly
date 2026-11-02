@@ -17,45 +17,45 @@ describe("resolveSpotifyRedirectUri", () => {
     expect(
       resolveSpotifyRedirectUri(
         "http://127.0.0.1:4173/",
-        "/runifly/",
-        "http://127.0.0.1:4173/runifly/?fixtures=1",
+        "/",
+        "http://127.0.0.1:4173/?fixtures=1",
       ),
-    ).toBe("http://127.0.0.1:4173/runifly/");
+    ).toBe("http://127.0.0.1:4173/");
   });
 
-  it("derives the GitHub Pages callback from the page origin and the built base", () => {
+  it("derives the production callback from the page origin and the built base", () => {
     const redirect = resolveSpotifyRedirectUri(
       "https://old.example.pages.dev/",
-      "/runifly",
-      "https://macro88.github.io/runifly/?code=abc&state=xyz",
+      "/",
+      "https://runifly.com/?code=abc&state=xyz",
     );
 
-    expect(redirect).toBe("https://macro88.github.io/runifly/");
+    expect(redirect).toBe("https://runifly.com/");
     expect(isSpotifyRedirectUri(redirect)).toBe(true);
   });
 
-  it("does not send a Pages visitor to a loopback variable", () => {
+  it("does not send a production visitor to a loopback variable", () => {
     expect(
       resolveSpotifyRedirectUri(
         "http://127.0.0.1:5173/",
-        "/runifly/",
-        "https://macro88.github.io/runifly/",
+        "/",
+        "https://runifly.com/",
       ),
-    ).toBe("https://macro88.github.io/runifly/");
+    ).toBe("https://runifly.com/");
   });
 
   it("falls back to the configured origin when the page URL is unusable", () => {
     expect(
-      resolveSpotifyRedirectUri("https://macro88.github.io/runifly/", "/runifly/", ""),
-    ).toBe("https://macro88.github.io/runifly/");
+      resolveSpotifyRedirectUri("https://runifly.com/", "/", ""),
+    ).toBe("https://runifly.com/");
   });
 
   it("returns undefined when the configured value is missing or not a URL", () => {
     expect(
-      resolveSpotifyRedirectUri(undefined, "/runifly/", "https://macro88.github.io/runifly/"),
+      resolveSpotifyRedirectUri(undefined, "/", "https://runifly.com/"),
     ).toBeUndefined();
     expect(
-      resolveSpotifyRedirectUri("not a url", "/runifly/", "https://macro88.github.io/runifly/"),
+      resolveSpotifyRedirectUri("not a url", "/", "https://runifly.com/"),
     ).toBeUndefined();
   });
 });

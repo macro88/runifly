@@ -21,7 +21,7 @@ const evidenceDir = path.join(
 );
 const gpxPath = path.join(root, "fixtures/fixture-climb.gpx");
 const port = Number(process.env.VERIFY_PORT || 4173);
-const pageUrl = `http://127.0.0.1:${port}/runifly/?fixtures=1`;
+const pageUrl = `http://127.0.0.1:${port}/?fixtures=1`;
 
 // Hand-checked against updateTimingData at 300 seconds per kilometre.
 // Song durations are 180s, 240s, and 90.5s. Race times are cumulative

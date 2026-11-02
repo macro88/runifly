@@ -6,7 +6,7 @@ This directory is the maintained source for verifying Runifly's user-facing beha
 
 - From the repository root, run `yarn verify`.
 - The helper installs nothing. Chromium must already be installed (`yarn playwright install chromium`).
-- The page under test is `http://127.0.0.1:4173/runifly/?fixtures=1` unless `VERIFY_PORT` is set. Preview serves the production build, whose Vite base is `/runifly/`.
+- The page under test is `http://127.0.0.1:4173/?fixtures=1` unless `VERIFY_PORT` is set. Preview serves the production build, whose Vite base is `/`.
 - The sample course is `fixtures/fixture-climb.gpx`. The playlist is the in-page fixture `Fixture Songs`. No Spotify account is used.
 - `yarn verify` refuses a port it did not bind. A second run sets `VERIFY_PORT` to a free port.
 - Never drive a preview this run did not start, and never open the app without `?fixtures=1`.
