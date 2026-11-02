@@ -98,13 +98,13 @@ Encode today's behaviour. Do not "correct" these oracles in a verification-only 
 
 Song kilometres and race times (the Vitest expectations and the six strings in the browser output) follow today's `updateTimingData`: cumulative raw duration, `toFixed(2)` on each boundary, kilometres = that rounded boundary / pace. They do not depend on GPX geometry. A timing-fix pull request that changes rounding, the running total, or the meaning of pace must update `src/data/timing.test.ts` and the `songs` table in `scripts/verify.mjs` together. Until that formula changes, those assertions stay.
 
-These are known bugs and are not asserted, on purpose:
+The sample journey does not assert the course geometry below. Vitest covers it.
 
-- Displayed course distance (`4`) is today's haversine in `src/utils/gpxUtils.tsx` (`earthRadiusMeters = 6371008.8`) of `fixtures/fixture-climb.gpx`, shown to two decimal kilometres. It will change if distance calculation changes. It does not use `aggregateLaps`.
+- Displayed course distance (`4`) is the haversine in `src/utils/gpxUtils.tsx` (`earthRadiusMeters = 6371008.8`) of `fixtures/fixture-climb.gpx`, rounded to the nearest millimetre and shown to two decimal kilometres. It does not use `aggregateLaps`.
 - The elevation chart is plotted per lap, not per metre. Do not assert path positions, axis ticks, or the shape of the climb. The sample climbs from 30 m to 180 m between kilometres 2 and 3 in the file. The chart is not the oracle for that climb.
-- `aggregateLaps` drops the overshoot past each whole kilometre and builds a fractional last lap (`lap: currentLap + totalDistance`, `totalDistance: 1 + totalDistance`). Do not assert lap count or lap totals.
-- `createFakeGpx` adds the fractional kilometre in kilometres onto a metre total. The journey replaces that fake course by loading the sample. Do not assert the fake course.
-- A single-point GPX, or a GPX with more than one track segment, throws today (`trkpt.map` / `trkseg.trkpt` when the parser does not produce arrays). The sample is one track, one segment, five points so this journey can load it. When that crash is fixed, add a journey. Do not weaken this one to hide the crash.
+- `aggregateLaps` closes a lap at each 1000 m and the last lap is the remainder. Lap distances sum to the route length. The sample's points sit on whole kilometres, so it is four laps of 1000 m. This journey does not read lap totals.
+- `createFakeGpx` stores a fractional kilometre as metres on an extra point. The journey replaces that generated course by loading the sample. Do not assert the fake course.
+- A GPX with several segments or tracks, or a route, loads. Distance is the haversine along each continuous segment or route. The straight line across a break between segments or tracks is not added. A missing elevation is carried forward, or 0 when nothing earlier has one. A file with no length, including a single point, is rejected the same way as an empty file, so the distance and pace already on screen stay. This journey still loads the one-segment sample. Vitest covers the other shapes. Do not weaken this journey.
 
 ## Scores
 

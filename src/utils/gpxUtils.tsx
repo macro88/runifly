@@ -51,8 +51,7 @@ function calculateDistance(point1: GeoJsonPoint, point2: GeoJsonPoint): number {
 }
 
 function roundLength(length: number): number {
-  return length;
-  //return Math.floor(length);
+  return Math.round(length * 1000) / 1000;
 }
 
 function radiansToLength(radians: number): number {
@@ -61,21 +60,28 @@ function radiansToLength(radians: number): number {
   return radians * factor;
 }
 
-function getPointDetails(points: GeoJsonPoint[]): PointDetail[] {
+function getPointDetails(
+  points: GeoJsonPoint[],
+  carryTotal = 0,
+  carryElevation = 0
+): PointDetail[] {
   const result: PointDetail[] = [];
 
   for (let i = 0; i < points.length; i++) {
-    const [lon, lat, ele] = points[i];
+    const [lon, lat, rawElevation] = points[i];
     const distance = i > 0 ? calculateDistance(points[i - 1], points[i]) : 0;
-    const totalDistance =
-      i > 0 ? roundLength(result[i - 1].totalDistance + distance) : 0;
-    const elevationGain = ele > points[i - 1]?.[2] ? ele - points[i - 1][2] : 0;
-    const elevationLoss = ele < points[i - 1]?.[2] ? points[i - 1][2] - ele : 0;
+    const previousTotal = i > 0 ? result[i - 1].totalDistance : carryTotal;
+    const totalDistance = roundLength(previousTotal + distance);
+    const previousElevation = i > 0 ? result[i - 1].elevation : carryElevation;
+    const elevation = Number.isFinite(rawElevation) ? rawElevation : previousElevation;
+    const baseline = i > 0 ? previousElevation : elevation;
+    const elevationGain = elevation > baseline ? elevation - baseline : 0;
+    const elevationLoss = elevation < baseline ? baseline - elevation : 0;
 
     result.push({
       longitude: lon,
       latitude: lat,
-      elevation: ele,
+      elevation,
       distance,
       totalDistance,
       elevationGain,
@@ -104,13 +110,13 @@ export function createFakeGpx(
   distance: number,
   pace: number
 ): Gpx {
-  const distanceInt = Math.floor(distance);
-  const distanceFraction = distance - distanceInt;
+  const wholeKilometres = Math.floor(distance);
+  const fractionMeters = Math.round((distance - wholeKilometres) * 1000);
   const amplitude = 10; // The height of the wave
   const frequency = 0.01; // The frequency of the wave
 
   const points: PointDetail[] = Array.from(
-    { length: distanceInt },
+    { length: wholeKilometres },
     (_, idx) => {
       const i = idx + 1;
       return {
@@ -127,21 +133,30 @@ export function createFakeGpx(
     }
   );
 
-  points[points.length - 1].elevation = 50;
-  points[0].elevation = 50;
-
-  if (distanceFraction > 0) {
-    points[points.length - 1].distance = distanceFraction;
-    points[points.length - 1].totalDistance += distanceFraction;
-    points[points.length - 1].time += pace * distanceFraction;
+  if (fractionMeters > 0) {
+    const totalMeters = wholeKilometres * 1000 + fractionMeters;
+    const i = points.length + 1;
+    points.push({
+      longitude: i,
+      latitude: i,
+      elevation: 50,
+      distance: fractionMeters,
+      totalDistance: totalMeters,
+      elevationGain: 0,
+      elevationLoss: 0,
+      time: (totalMeters / 1000) * pace,
+    });
   }
 
-  const laps = aggregateLaps(points);
+  if (points.length > 0) {
+    points[0].elevation = 50;
+    points[points.length - 1].elevation = 50;
+  }
 
   return {
-    name: name,
-    points: points,
-    laps,
+    name,
+    points,
+    laps: aggregateLaps(points),
   };
 }
 
@@ -149,6 +164,8 @@ function smoothPoints(
   originalPoints: GeoJsonPoint[],
   percentileCutoff: number
 ) {
+  if (originalPoints.length < 2) return originalPoints.slice();
+
   // Collect the distance from each point to the next point
   // length = originalPoints.length - 1
   const pairDistances = [];
@@ -162,7 +179,6 @@ function smoothPoints(
   // of course it's not really a "percentile" anymore, but good enough
   const distanceCutoff =
     percentileCutoff * pairDistances[Math.floor(pairDistances.length / 2)];
-  console.log("Distance cutoff is", distanceCutoff, "km");
 
   // For smoothness, massage the gpx route by merging points below distance cutoff
   // the assumption here is that points are evenly spaced in time (maybe not always true?)
@@ -180,88 +196,167 @@ function smoothPoints(
     smoothedPoints.push(originalPoints[idx]);
     idx += 1;
   }
-  // We remember to add on the last point
-  smoothedPoints.push(originalPoints[originalPoints.length - 1]);
-  console.log(
-    `After smoothing: ${originalPoints.length} -> ${smoothedPoints.length}`
-  );
+  // The inner loop can already have landed on the last point.
+  const lastPoint = originalPoints[originalPoints.length - 1];
+  if (smoothedPoints[smoothedPoints.length - 1] !== lastPoint) {
+    smoothedPoints.push(lastPoint);
+  }
   return smoothedPoints;
+}
+
+type LoosePoint = { lat?: number; lon?: number; ele?: number };
+type LooseSegment = { trkpt?: LoosePoint | LoosePoint[] };
+type LooseTrack = { name?: unknown; trkseg?: LooseSegment | LooseSegment[] };
+type LooseRoute = { name?: unknown; rtept?: LoosePoint | LoosePoint[] };
+
+function asList<T>(value: T | T[] | undefined | null): T[] {
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function readName(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  return "";
+}
+
+function coordsOf(points: LoosePoint | LoosePoint[] | undefined): GeoJsonPoint[] {
+  const coords: GeoJsonPoint[] = [];
+  for (const point of asList(points)) {
+    if (point == null) continue;
+    const latitude = point.lat;
+    const longitude = point.lon;
+    if (latitude == null || longitude == null) continue;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+    const rawElevation = point.ele;
+    const elevation =
+      rawElevation != null && Number.isFinite(rawElevation) ? rawElevation : Number.NaN;
+    coords.push([longitude, latitude, elevation]);
+  }
+  return coords;
+}
+
+function chainsFromTracks(tracks: LooseTrack[]): { name: string; chains: GeoJsonPoint[][] } {
+  const chains: GeoJsonPoint[][] = [];
+  let name = "";
+  for (const track of tracks) {
+    if (!track) continue;
+    if (!name) name = readName(track.name);
+    for (const segment of asList(track.trkseg)) {
+      const coords = coordsOf(segment?.trkpt);
+      if (coords.length > 0) chains.push(coords);
+    }
+  }
+  return { name, chains };
+}
+
+function chainsFromRoutes(routes: LooseRoute[]): { name: string; chains: GeoJsonPoint[][] } {
+  const chains: GeoJsonPoint[][] = [];
+  let name = "";
+  for (const route of routes) {
+    if (!route) continue;
+    if (!name) name = readName(route.name);
+    const coords = coordsOf(route.rtept);
+    if (coords.length > 0) chains.push(coords);
+  }
+  return { name, chains };
+}
+
+function pointsFromChains(chains: GeoJsonPoint[][]): PointDetail[] {
+  const points: PointDetail[] = [];
+  for (const chain of chains) {
+    const cutoff =
+      chain.length > 3000 ? Math.min(23, chain.length * 0.001) : 0;
+    const smoothed = smoothPoints(chain, cutoff);
+    const previous = points[points.length - 1];
+    // A new segment or track is a break in the recording. The gap is not distance.
+    points.push(
+      ...getPointDetails(
+        smoothed,
+        previous?.totalDistance ?? 0,
+        previous?.elevation ?? 0
+      )
+    );
+  }
+  return points;
 }
 
 export async function parseFile(file: File): Promise<Gpx> {
   const parser: GpxParser = new GpxParser();
-
   const contents = await file.text();
-  const gpx = await parser.parse(contents);
-
-  const points = getPointDetails(
-    smoothPoints(
-      gpx.trk[0].trkseg.trkpt.map((p) => [p.lon, p.lat, p.ele]),
-      gpx.trk[0].trkseg.trkpt.length > 3000
-        ? Math.min(23, gpx.trk[0].trkseg.trkpt.length * 0.001)
-        : 0
-    )
-  );
-
-  const laps = aggregateLaps(points);
-
-  const x = {
-    name: gpx.trk[0].name,
-    points,
-    laps: laps,
+  const gpx = (await parser.parse(contents)) as {
+    trk?: LooseTrack | LooseTrack[];
+    rte?: LooseRoute | LooseRoute[];
   };
-  return x;
+
+  const tracks = chainsFromTracks(asList(gpx.trk));
+  const geometry =
+    tracks.chains.length > 0 ? tracks : chainsFromRoutes(asList(gpx.rte));
+  if (geometry.chains.length === 0) {
+    throw new Error("Invalid GPX");
+  }
+
+  const points = pointsFromChains(geometry.chains);
+  if (points.length === 0 || points[points.length - 1].totalDistance <= 0) {
+    throw new Error("Invalid GPX");
+  }
+  return {
+    name: geometry.name,
+    points,
+    laps: aggregateLaps(points),
+  };
+}
+
+const MILLIMETRES_PER_METRE = 1000;
+const MILLIMETRES_PER_LAP = 1000 * MILLIMETRES_PER_METRE;
+
+function metresToMillimetres(metres: number): number {
+  return Math.round(metres * MILLIMETRES_PER_METRE);
 }
 
 export function aggregateLaps(points: PointDetail[]): Lap[] {
   const laps: Lap[] = [];
-  let currentLap = 1;
+  let lapNumber = 1;
   let elevations: number[] = [];
-  let totalDistance = 0;
+  let lapMillimetres = 0;
   let elevationGain = 0;
   let elevationLoss = 0;
   let time = 0;
-  let lastElevation = 0;
 
-  for (const point of points) {
-    //store the last good elevation in case the current point has no elevation. Some files don't have elevation data for every point.
-    if (point.elevation) lastElevation = point.elevation;
-
-    totalDistance += point.distance;
-    elevationGain += point.elevationGain;
-    elevationLoss += point.elevationLoss;
-    elevations.push(point.elevation ?? lastElevation);
-    time += point.time;
-
-    if (totalDistance >= 1000) {
-      laps.push({
-        lap: currentLap,
-        totalDistance,
-        elevationGain,
-        elevationLoss,
-        elevations: [...elevations],
-        time,
-      });
-
-      currentLap++;
-      totalDistance = 0;
-      elevationGain = 0;
-      elevationLoss = 0;
-      elevations = [];
-      time = 0;
-    }
-  }
-
-  if (totalDistance > 0) {
+  const closeLap = (millimetres: number) => {
     laps.push({
-      lap: currentLap + totalDistance,
-      totalDistance: 1 + totalDistance,
+      lap: lapNumber,
+      totalDistance: millimetres / MILLIMETRES_PER_METRE,
       elevationGain,
       elevationLoss,
       elevations: [...elevations],
       time,
     });
+    lapNumber += 1;
+    elevations = [];
+    elevationGain = 0;
+    elevationLoss = 0;
+    time = 0;
+    lapMillimetres = 0;
+  };
+
+  for (const point of points) {
+    const elevation = Number.isFinite(point.elevation) ? point.elevation : 0;
+    elevations.push(elevation);
+    elevationGain += point.elevationGain;
+    elevationLoss += point.elevationLoss;
+    time += point.time;
+
+    let remainingMillimetres = metresToMillimetres(point.distance);
+    while (lapMillimetres + remainingMillimetres >= MILLIMETRES_PER_LAP) {
+      const needed = MILLIMETRES_PER_LAP - lapMillimetres;
+      if (!(needed > 0)) break;
+      remainingMillimetres -= needed;
+      closeLap(MILLIMETRES_PER_LAP);
+      if (remainingMillimetres > 0) elevations.push(elevation);
+    }
+    lapMillimetres += remainingMillimetres;
   }
-  //console.log(laps);
+
+  if (lapMillimetres > 0) closeLap(lapMillimetres);
   return laps;
 }
