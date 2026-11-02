@@ -1,9 +1,9 @@
 import React, {
   createContext,
   useContext,
+  useMemo,
   useState,
   ReactNode,
-  useEffect,
   Dispatch,
   SetStateAction,
 } from "react";
@@ -38,7 +38,6 @@ interface PlaylistContextType {
   syncRequired: boolean;
   setsyncRequired: (syncRequired: boolean) => void;
   songs: RuniflySong[];
-  setSongs: (songs: RuniflySong[]) => void;
 
   sync: () => void;
   updateSongOrder: (newSongs: RuniflySong[]) => void;
@@ -68,7 +67,6 @@ const PlaylistContext = createContext<PlaylistContextType>({
   syncRequired: false,
   setsyncRequired: () => {},
   songs: [],
-  setSongs: () => {},
   sync: () => {},
   updateSongOrder: () => {},
 });
@@ -88,7 +86,6 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   const [playlistCollaborative, setPlaylistCollaborative] = useState(false);
   const [hoveredSong, sethoveredSong] = useState<RuniflySong>();
   const [syncRequired, setsyncRequired] = useState<boolean>(false);
-  const [songs, setSongs] = useState<RuniflySong[]>([]);
   const { pace } = useCourseContext();
 
   const { data, error, loading, updateData } = useRuniflyPlaylist(
@@ -106,6 +103,22 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     setPlaylistCollaborative(collaborative);
   };
 
+  const timedSongs = useMemo(
+    () => updateTimingData(data, pace),
+    [data, pace]
+  );
+  // Drag and reset hold a list until the fetched songs or the pace change.
+  // A pace change retimes the fetched order, matching the old effect.
+  const [songOverride, setSongOverride] = useState<{
+    source: RuniflySong[];
+    pace: number;
+    songs: RuniflySong[];
+  } | null>(null);
+  const songs =
+    songOverride && songOverride.source === data && songOverride.pace === pace
+      ? songOverride.songs
+      : timedSongs;
+
   const sync = async () => {
     const result = await updateData(songs);
     if (!result) return;
@@ -113,22 +126,19 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     if (result.complete) setsyncRequired(false);
   };
 
-  useEffect(() => {
-    console.log("PlaylistProvider: useEffect");
-    if (data) {
-      setSongs(updateTimingData(data, pace));
-    }
-  }, [data, pace]);
-
   const updateSongOrder = (newSongs: RuniflySong[]) => {
     setsyncRequired(true);
-    setSongs(updateTimingData(newSongs, pace));
+    setSongOverride({
+      source: data,
+      pace,
+      songs: updateTimingData(newSongs, pace),
+    });
   };
 
   const reset = () => {
     setplaylistKey(defaultValues.playlistKey);
     sethoveredSong(defaultValues.hoveredSong);
-    setSongs([]);
+    setSongOverride({ source: data, pace, songs: [] });
     setsyncRequired(false);
     setplaylistImage(undefined);
     setplaylistName(defaultValues.playlistName);
@@ -151,7 +161,6 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     sethoveredSong,
     reset,
     setsyncRequired,
-    setSongs,
     updateSongOrder,
     setplaylistName,
     setplaylistImage,
