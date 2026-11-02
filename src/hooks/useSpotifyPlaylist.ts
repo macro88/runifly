@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fixtureSongRows, isFixturesMode } from "../fixtures/playlist";
 import {
   PLAYLIST_ITEMS_ACCESS_MESSAGE,
@@ -67,70 +67,95 @@ export function useRuniflyPlaylist(
   playlistOwnerId: string | undefined,
   playlistCollaborative: boolean
 ) {
-  const [loading, setLoading] = useState<boolean>(false);
+  const loadSerial = useRef(0);
+  const [pendingLoad, setPendingLoad] = useState<number | null>(null);
+  const [settledLoad, setSettledLoad] = useState<number | null>(null);
+  const loading = pendingLoad !== null && pendingLoad !== settledLoad;
   const [data, setData] = useState<RuniflySong[]>([]);
   const [slots, setSlots] = useState<string[]>([]);
   const [error, setError] = useState<unknown>();
   const { sdk, profile } = useSpotifyAuth();
 
-  function remember(songs: RuniflySong[], slotKeys: string[]) {
+  const startLoad = useCallback((): number => {
+    const id = loadSerial.current + 1;
+    loadSerial.current = id;
+    setPendingLoad(id);
+    return id;
+  }, []);
+
+  const finishLoad = useCallback((id: number) => {
+    setSettledLoad((current) =>
+      current !== null && current >= id ? current : id
+    );
+  }, []);
+
+  const remember = useCallback((songs: RuniflySong[], slotKeys: string[]) => {
     setData(songs);
     setSlots(slotKeys);
-  }
+  }, []);
 
-  async function updateData(
-    newData: RuniflySong[]
-  ): Promise<PlaylistWriteResult | undefined> {
-    if (playlistKey === undefined) return;
-    if (isFixturesMode()) {
-      remember(newData, newData.map((song) => song.key));
-      setError(undefined);
-      return { snapshotId, complete: true };
-    }
-
-    const visibleKeys = newData.map((song) => song.key);
-    let moves: PlaylistItemMove[];
-    try {
-      moves = planPlaylistReorder(slots, visibleKeys);
-    } catch (reorderError) {
-      setError(reorderError);
-      return;
-    }
-
-    if (!sdk) {
-      setError(new Error("Spotify is not signed in."));
-      return;
-    }
-    if (moves.length > 0 && !snapshotId) {
-      setError(new Error("This playlist has no snapshot yet, so the new order was not saved."));
-      return;
-    }
-
-    setLoading(true);
-    setError(undefined);
-    try {
-      const token = await requireAccessToken(sdk);
-      const nextSnapshot = await reorderPlaylistItems(
-        playlistKey,
-        token,
-        moves,
-        snapshotId ?? ""
-      );
-      remember(newData, applyPlaylistMoves(slots, moves));
-      return { snapshotId: nextSnapshot, complete: true };
-    } catch (reorderError) {
-      console.error(reorderError);
-      if (reorderError instanceof PlaylistReorderInterrupted) {
-        setSlots(applyPlaylistMoves(slots, moves.slice(0, reorderError.appliedMoves)));
-        setError(reorderError);
-        return { snapshotId: reorderError.snapshotId, complete: false };
+  const updateData = useCallback(
+    async (
+      newData: RuniflySong[]
+    ): Promise<PlaylistWriteResult | undefined> => {
+      if (playlistKey === undefined) return;
+      if (isFixturesMode()) {
+        remember(newData, newData.map((song) => song.key));
+        setError(undefined);
+        return { snapshotId, complete: true };
       }
-      setError(reorderError);
-      return;
-    } finally {
-      setLoading(false);
-    }
-  }
+
+      const visibleKeys = newData.map((song) => song.key);
+      let moves: PlaylistItemMove[];
+      try {
+        moves = planPlaylistReorder(slots, visibleKeys);
+      } catch (reorderError) {
+        setError(reorderError);
+        return;
+      }
+
+      if (!sdk) {
+        setError(new Error("Spotify is not signed in."));
+        return;
+      }
+      if (moves.length > 0 && !snapshotId) {
+        setError(
+          new Error(
+            "This playlist has no snapshot yet, so the new order was not saved."
+          )
+        );
+        return;
+      }
+
+      const loadId = startLoad();
+      setError(undefined);
+      try {
+        const token = await requireAccessToken(sdk);
+        const nextSnapshot = await reorderPlaylistItems(
+          playlistKey,
+          token,
+          moves,
+          snapshotId ?? ""
+        );
+        remember(newData, applyPlaylistMoves(slots, moves));
+        return { snapshotId: nextSnapshot, complete: true };
+      } catch (reorderError) {
+        console.error(reorderError);
+        if (reorderError instanceof PlaylistReorderInterrupted) {
+          setSlots(
+            applyPlaylistMoves(slots, moves.slice(0, reorderError.appliedMoves))
+          );
+          setError(reorderError);
+          return { snapshotId: reorderError.snapshotId, complete: false };
+        }
+        setError(reorderError);
+        return;
+      } finally {
+        finishLoad(loadId);
+      }
+    },
+    [finishLoad, playlistKey, remember, sdk, slots, snapshotId, startLoad]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -143,45 +168,58 @@ export function useRuniflyPlaylist(
         if (isFixturesMode()) {
           const rows = playlistKey === undefined ? [] : fixtureSongRows();
           setError(undefined);
+          setPendingLoad(null);
           remember(rows, rows.map((song) => song.key));
           return;
         }
 
         if (playlistKey === undefined || !activeSdk) {
           setError(undefined);
+          setPendingLoad(null);
           remember([], []);
           return;
         }
 
-        setLoading(true);
+        const loadId = startLoad();
         setError(undefined);
-        if (
-          playlistItemsBlocked(
-            profile?.id,
-            playlistOwnerId,
-            playlistCollaborative
-          )
-        ) {
-          throw new PlaylistAccessError(PLAYLIST_ITEMS_ACCESS_MESSAGE);
+        try {
+          if (
+            playlistItemsBlocked(
+              profile?.id,
+              playlistOwnerId,
+              playlistCollaborative
+            )
+          ) {
+            throw new PlaylistAccessError(PLAYLIST_ITEMS_ACCESS_MESSAGE);
+          }
+          const token = await requireAccessToken(activeSdk);
+          const entries = await fetchAllPlaylistItems(playlistKey, token);
+          if (cancelled) return;
+          remember(songsFromPlaylistItems(entries), slotKeysFromEntries(entries));
+        } finally {
+          finishLoad(loadId);
         }
-        const token = await requireAccessToken(activeSdk);
-        const entries = await fetchAllPlaylistItems(playlistKey, token);
-        if (cancelled) return;
-        remember(songsFromPlaylistItems(entries), slotKeysFromEntries(entries));
       } catch (loadError) {
         console.error(loadError);
         if (cancelled) return;
         remember([], []);
         setError(loadError);
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [playlistKey, sdk, profile?.id, playlistOwnerId, playlistCollaborative]);
+  }, [
+    finishLoad,
+    playlistCollaborative,
+    playlistKey,
+    playlistOwnerId,
+    profile?.id,
+    remember,
+    sdk,
+    startLoad,
+  ]);
 
   return { loading, data, error, updateData };
 }

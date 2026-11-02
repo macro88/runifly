@@ -1,9 +1,10 @@
 import React, {
   createContext,
   useContext,
+  useCallback,
+  useMemo,
   useState,
   ReactNode,
-  useEffect,
   Dispatch,
   SetStateAction,
 } from "react";
@@ -38,7 +39,6 @@ interface PlaylistContextType {
   syncRequired: boolean;
   setsyncRequired: (syncRequired: boolean) => void;
   songs: RuniflySong[];
-  setSongs: (songs: RuniflySong[]) => void;
 
   sync: () => void;
   updateSongOrder: (newSongs: RuniflySong[]) => void;
@@ -68,7 +68,6 @@ const PlaylistContext = createContext<PlaylistContextType>({
   syncRequired: false,
   setsyncRequired: () => {},
   songs: [],
-  setSongs: () => {},
   sync: () => {},
   updateSongOrder: () => {},
 });
@@ -88,7 +87,6 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   const [playlistCollaborative, setPlaylistCollaborative] = useState(false);
   const [hoveredSong, sethoveredSong] = useState<RuniflySong>();
   const [syncRequired, setsyncRequired] = useState<boolean>(false);
-  const [songs, setSongs] = useState<RuniflySong[]>([]);
   const { pace } = useCourseContext();
 
   const { data, error, loading, updateData } = useRuniflyPlaylist(
@@ -98,67 +96,108 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     playlistCollaborative
   );
 
-  const setPlaylistOwner = (
-    ownerId: string | undefined,
-    collaborative: boolean
-  ) => {
-    setPlaylistOwnerId(ownerId);
-    setPlaylistCollaborative(collaborative);
-  };
+  const setPlaylistOwner = useCallback(
+    (ownerId: string | undefined, collaborative: boolean) => {
+      setPlaylistOwnerId(ownerId);
+      setPlaylistCollaborative(collaborative);
+    },
+    []
+  );
 
-  const sync = async () => {
+  const timedSongs = useMemo(
+    () => updateTimingData(data, pace),
+    [data, pace]
+  );
+  // Drag and reset hold a list only while the fetched songs and pace stay put.
+  // Drop the hold when either changes, so a later return to the same pace
+  // cannot bring back an order the pace change already discarded.
+  const [songOverride, setSongOverride] = useState<{
+    source: RuniflySong[];
+    pace: number;
+    songs: RuniflySong[];
+  } | null>(null);
+  if (
+    songOverride !== null &&
+    (songOverride.source !== data || songOverride.pace !== pace)
+  ) {
+    setSongOverride(null);
+  }
+  const songs =
+    songOverride !== null &&
+    songOverride.source === data &&
+    songOverride.pace === pace
+      ? songOverride.songs
+      : timedSongs;
+
+  const sync = useCallback(async () => {
     const result = await updateData(songs);
     if (!result) return;
     if (result.snapshotId) setsnapshotId(result.snapshotId);
     if (result.complete) setsyncRequired(false);
-  };
+  }, [songs, updateData]);
 
-  useEffect(() => {
-    console.log("PlaylistProvider: useEffect");
-    if (data) {
-      setSongs(updateTimingData(data, pace));
-    }
-  }, [data, pace]);
+  const updateSongOrder = useCallback(
+    (newSongs: RuniflySong[]) => {
+      setsyncRequired(true);
+      setSongOverride({
+        source: data,
+        pace,
+        songs: updateTimingData(newSongs, pace),
+      });
+    },
+    [data, pace]
+  );
 
-  const updateSongOrder = (newSongs: RuniflySong[]) => {
-    setsyncRequired(true);
-    setSongs(updateTimingData(newSongs, pace));
-  };
-
-  const reset = () => {
+  const reset = useCallback(() => {
     setplaylistKey(defaultValues.playlistKey);
     sethoveredSong(defaultValues.hoveredSong);
-    setSongs([]);
+    setSongOverride({ source: data, pace, songs: [] });
     setsyncRequired(false);
     setplaylistImage(undefined);
     setplaylistName(defaultValues.playlistName);
     setsnapshotId(undefined);
     setPlaylistOwnerId(undefined);
     setPlaylistCollaborative(false);
-  };
+  }, [data, pace]);
 
-  const value = {
-    playlistKey,
-    hoveredSong,
-    syncRequired,
-    snapshotId,
-    playlistName,
-    playlistImage,
-    songs,
-    loading,
-    playlistError: playlistFailureMessage(error),
-    setplaylistKey,
-    sethoveredSong,
-    reset,
-    setsyncRequired,
-    setSongs,
-    updateSongOrder,
-    setplaylistName,
-    setplaylistImage,
-    setsnapshotId,
-    setPlaylistOwner,
-    sync,
-  };
+  const value = useMemo(
+    () => ({
+      playlistKey,
+      hoveredSong,
+      syncRequired,
+      snapshotId,
+      playlistName,
+      playlistImage,
+      songs,
+      loading,
+      playlistError: playlistFailureMessage(error),
+      setplaylistKey,
+      sethoveredSong,
+      reset,
+      setsyncRequired,
+      updateSongOrder,
+      setplaylistName,
+      setplaylistImage,
+      setsnapshotId,
+      setPlaylistOwner,
+      sync,
+    }),
+    [
+      hoveredSong,
+      loading,
+      playlistImage,
+      playlistKey,
+      playlistName,
+      reset,
+      setPlaylistOwner,
+      snapshotId,
+      songs,
+      sync,
+      syncRequired,
+      updateSongOrder,
+      error,
+    ]
+  );
 
   return (
     <PlaylistContext.Provider value={value}>

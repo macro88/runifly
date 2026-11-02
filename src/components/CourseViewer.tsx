@@ -14,20 +14,18 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { gpx, setDistance, setName, setGpx } = useCourseContext();
 
-  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragEnter = (event: React.DragEvent<HTMLButtonElement>) => {
     event.preventDefault();
     setIsDragging(true);
   };
 
-  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragLeave = (event: React.DragEvent<HTMLButtonElement>) => {
     event.preventDefault();
     setIsDragging(false);
   };
 
   const handleClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    fileInputRef.current?.click();
   };
 
   const loadCourseFile = async (file: File) => {
@@ -43,7 +41,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
     if (onFileDrop) onFileDrop(file);
   };
 
-  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (event: React.DragEvent<HTMLButtonElement>) => {
     event.preventDefault();
     setIsDragging(false);
 
@@ -59,15 +57,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
   };
 
   return (
-    <div
-      className={`course-viewer ${isDragging ? "dragging" : ""}`}
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      onClick={handleClick}
-      style={{ width: "100%", height: "200px" }}
-    >
+    <div style={{ width: "100%" }}>
       <input
         type="file"
         ref={fileInputRef}
@@ -77,12 +67,33 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
         aria-label="Course GPX file"
         multiple={false}
       />
-
-      {gpx && (
-        <Card>
-          <ElevationGraph />
-        </Card>
-      )}
+      <button
+        type="button"
+        className={`course-viewer ${isDragging ? "dragging" : ""}`}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={handleClick}
+        style={{
+          width: "100%",
+          height: "200px",
+          padding: 0,
+          border: "none",
+          background: "transparent",
+          color: "inherit",
+          font: "inherit",
+          textAlign: "left",
+          display: "block",
+          cursor: "inherit",
+        }}
+      >
+        {gpx && (
+          <Card>
+            <ElevationGraph />
+          </Card>
+        )}
+      </button>
     </div>
   );
 };
