@@ -1,7 +1,13 @@
 import { DOMParser as XmldomParser } from "@xmldom/xmldom";
 import { beforeAll, describe, expect, it } from "vitest";
 import fixtureClimb from "../../fixtures/fixture-climb.gpx?raw";
-import { parseFile, totalDistance, type Gpx } from "./gpxUtils";
+import {
+  aggregateLaps,
+  parseFile,
+  totalDistance,
+  type Gpx,
+  type PointDetail,
+} from "./gpxUtils";
 
 /**
  * Node has no DOMParser. The app uses the browser one. This test substitute
@@ -144,6 +150,63 @@ describe("parseFile geometry", () => {
 
   it("rejects a GPX with no points", async () => {
     await expect(load("<gpx></gpx>", "empty.gpx")).rejects.toThrow("Invalid GPX");
+  });
+});
+
+function detail(
+  distance: number,
+  totalDistance: number,
+  elevation = 10
+): PointDetail {
+  return {
+    longitude: 0,
+    latitude: 0,
+    elevation,
+    distance,
+    totalDistance,
+    elevationGain: 0,
+    elevationLoss: 0,
+    time: 0,
+  };
+}
+
+describe("aggregateLaps", () => {
+  it("splits on each kilometre and keeps the last lap inside the route", () => {
+    const points = [
+      detail(0, 0, 10),
+      detail(600, 600, 20),
+      detail(600, 1200, 30),
+      detail(400, 1600, 25),
+    ];
+
+    const laps = aggregateLaps(points);
+
+    expect(laps.map((lap) => lap.lap)).toEqual([1, 2]);
+    expect(laps.map((lap) => lap.totalDistance)).toEqual([1000, 600]);
+    expect(laps.reduce((sum, lap) => sum + lap.totalDistance, 0)).toBe(1600);
+  });
+
+  it("splits one long step into whole kilometres plus the remainder", () => {
+    const laps = aggregateLaps([detail(0, 0), detail(2500, 2500)]);
+
+    expect(laps.map((lap) => lap.lap)).toEqual([1, 2, 3]);
+    expect(laps.map((lap) => lap.totalDistance)).toEqual([1000, 1000, 500]);
+    expect(laps.reduce((sum, lap) => sum + lap.totalDistance, 0)).toBe(2500);
+  });
+
+  it("does not add an extra lap when the route ends on a kilometre", async () => {
+    const course = await load(fixtureClimb, "fixture-climb.gpx");
+
+    expect(course.laps.map((lap) => lap.lap)).toEqual([1, 2, 3, 4]);
+    expect(course.laps.map((lap) => lap.totalDistance)).toEqual([
+      1000, 1000, 1000, 1000,
+    ]);
+    expect(course.laps.map((lap) => lap.elevations)).toEqual([
+      [30, 30],
+      [30],
+      [180],
+      [180],
+    ]);
   });
 });
 

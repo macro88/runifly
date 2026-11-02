@@ -290,53 +290,48 @@ export async function parseFile(file: File): Promise<Gpx> {
 
 export function aggregateLaps(points: PointDetail[]): Lap[] {
   const laps: Lap[] = [];
-  let currentLap = 1;
+  let lapNumber = 1;
   let elevations: number[] = [];
-  let totalDistance = 0;
+  let lapDistance = 0;
   let elevationGain = 0;
   let elevationLoss = 0;
   let time = 0;
-  let lastElevation = 0;
 
-  for (const point of points) {
-    //store the last good elevation in case the current point has no elevation. Some files don't have elevation data for every point.
-    if (point.elevation) lastElevation = point.elevation;
-
-    totalDistance += point.distance;
-    elevationGain += point.elevationGain;
-    elevationLoss += point.elevationLoss;
-    elevations.push(point.elevation ?? lastElevation);
-    time += point.time;
-
-    if (totalDistance >= 1000) {
-      laps.push({
-        lap: currentLap,
-        totalDistance,
-        elevationGain,
-        elevationLoss,
-        elevations: [...elevations],
-        time,
-      });
-
-      currentLap++;
-      totalDistance = 0;
-      elevationGain = 0;
-      elevationLoss = 0;
-      elevations = [];
-      time = 0;
-    }
-  }
-
-  if (totalDistance > 0) {
+  const closeLap = (distance: number) => {
     laps.push({
-      lap: currentLap + totalDistance,
-      totalDistance: 1 + totalDistance,
+      lap: lapNumber,
+      totalDistance: distance,
       elevationGain,
       elevationLoss,
       elevations: [...elevations],
       time,
     });
+    lapNumber += 1;
+    elevations = [];
+    elevationGain = 0;
+    elevationLoss = 0;
+    time = 0;
+    lapDistance = 0;
+  };
+
+  for (const point of points) {
+    const elevation = Number.isFinite(point.elevation) ? point.elevation : 0;
+    elevations.push(elevation);
+    elevationGain += point.elevationGain;
+    elevationLoss += point.elevationLoss;
+    time += point.time;
+
+    let remaining = point.distance;
+    while (lapDistance + remaining >= 1000) {
+      const needed = 1000 - lapDistance;
+      if (!(needed > 0)) break;
+      remaining -= needed;
+      closeLap(1000);
+      if (remaining > 0) elevations.push(elevation);
+    }
+    lapDistance += remaining;
   }
-  //console.log(laps);
+
+  if (lapDistance > 0) closeLap(lapDistance);
   return laps;
 }
