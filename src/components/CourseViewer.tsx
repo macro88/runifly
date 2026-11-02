@@ -30,6 +30,12 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
     }
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleClick();
+  };
+
   const loadCourseFile = async (file: File) => {
     if (!file.name.endsWith(".gpx")) {
       console.log("Invalid file type. Only .gpx files are allowed.");
@@ -61,11 +67,14 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ onFileDrop }) => {
   return (
     <div
       className={`course-viewer ${isDragging ? "dragging" : ""}`}
+      role="button"
+      tabIndex={0}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       style={{ width: "100%", height: "200px" }}
     >
       <input
