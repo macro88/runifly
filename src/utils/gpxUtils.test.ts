@@ -119,18 +119,18 @@ describe("parseFile geometry", () => {
     expect(displayedKilometres(course)).toBe(1);
   });
 
-  it("loads a single point as a zero-length course", async () => {
+  it("rejects a single point as an invalid course", async () => {
     const only = north(0);
     const xml = `<gpx><trk><name>Pin</name><trkseg>${trkpt(only.lat, only.lon, 42)}</trkseg></trk></gpx>`;
 
-    const course = await load(xml, "pin.gpx");
+    await expect(load(xml, "pin.gpx")).rejects.toThrow("Invalid GPX");
+  });
 
-    expect(course.name).toBe("Pin");
-    expect(course.points).toHaveLength(1);
-    expect(displayedKilometres(course)).toBe(0);
-    expect(
-      course.laps.reduce((sum, lap) => sum + lap.totalDistance, 0)
-    ).toBe(0);
+  it("rejects a track whose points do not move", async () => {
+    const only = north(0);
+    const xml = `<gpx><trk><name>Still</name><trkseg>${trkpt(only.lat, only.lon, 10)}${trkpt(only.lat, only.lon, 12)}</trkseg></trk></gpx>`;
+
+    await expect(load(xml, "still.gpx")).rejects.toThrow("Invalid GPX");
   });
 
   it("keeps the distance when elevation is missing", async () => {

@@ -286,6 +286,9 @@ export async function parseFile(file: File): Promise<Gpx> {
   }
 
   const points = pointsFromChains(geometry.chains);
+  if (points.length === 0 || points[points.length - 1].totalDistance <= 0) {
+    throw new Error("Invalid GPX");
+  }
   return {
     name: geometry.name,
     points,

@@ -104,7 +104,7 @@ The sample journey does not assert the course geometry below. Vitest covers it.
 - The elevation chart is plotted per lap, not per metre. Do not assert path positions, axis ticks, or the shape of the climb. The sample climbs from 30 m to 180 m between kilometres 2 and 3 in the file. The chart is not the oracle for that climb.
 - `aggregateLaps` closes a lap at each 1000 m and the last lap is the remainder. Lap distances sum to the route length. The sample's points sit on whole kilometres, so it is four laps of 1000 m. This journey does not read lap totals.
 - `createFakeGpx` stores a fractional kilometre as metres on an extra point. The journey replaces that generated course by loading the sample. Do not assert the fake course.
-- A GPX with several segments or tracks, a route, or one point loads. Distance is the haversine along each continuous segment or route. The straight line across a break between segments or tracks is not added. A missing elevation is carried forward, or 0 when nothing earlier has one. This journey still loads the one-segment sample. Vitest covers the other shapes. Do not weaken this journey.
+- A GPX with several segments or tracks, or a route, loads. Distance is the haversine along each continuous segment or route. The straight line across a break between segments or tracks is not added. A missing elevation is carried forward, or 0 when nothing earlier has one. A file with no length, including a single point, is rejected the same way as an empty file, so the distance and pace already on screen stay. This journey still loads the one-segment sample. Vitest covers the other shapes. Do not weaken this journey.
 
 ## Scores
 
