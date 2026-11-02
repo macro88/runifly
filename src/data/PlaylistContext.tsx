@@ -108,15 +108,24 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     () => updateTimingData(data, pace),
     [data, pace]
   );
-  // Drag and reset hold a list until the fetched songs or the pace change.
-  // A pace change retimes the fetched order, matching the old effect.
+  // Drag and reset hold a list only while the fetched songs and pace stay put.
+  // Drop the hold when either changes, so a later return to the same pace
+  // cannot bring back an order the pace change already discarded.
   const [songOverride, setSongOverride] = useState<{
     source: RuniflySong[];
     pace: number;
     songs: RuniflySong[];
   } | null>(null);
+  if (
+    songOverride !== null &&
+    (songOverride.source !== data || songOverride.pace !== pace)
+  ) {
+    setSongOverride(null);
+  }
   const songs =
-    songOverride && songOverride.source === data && songOverride.pace === pace
+    songOverride !== null &&
+    songOverride.source === data &&
+    songOverride.pace === pace
       ? songOverride.songs
       : timedSongs;
 
