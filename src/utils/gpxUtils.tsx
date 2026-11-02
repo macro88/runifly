@@ -175,7 +175,6 @@ function smoothPoints(
   // of course it's not really a "percentile" anymore, but good enough
   const distanceCutoff =
     percentileCutoff * pairDistances[Math.floor(pairDistances.length / 2)];
-  console.log("Distance cutoff is", distanceCutoff, "km");
 
   // For smoothness, massage the gpx route by merging points below distance cutoff
   // the assumption here is that points are evenly spaced in time (maybe not always true?)
@@ -198,9 +197,6 @@ function smoothPoints(
   if (smoothedPoints[smoothedPoints.length - 1] !== lastPoint) {
     smoothedPoints.push(lastPoint);
   }
-  console.log(
-    `After smoothing: ${originalPoints.length} -> ${smoothedPoints.length}`
-  );
   return smoothedPoints;
 }
 

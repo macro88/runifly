@@ -1,5 +1,5 @@
 import { DOMParser as XmldomParser } from "@xmldom/xmldom";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import fixtureClimb from "../../fixtures/fixture-climb.gpx?raw";
 import {
   aggregateLaps,
@@ -252,6 +252,21 @@ describe("createFakeGpx", () => {
     expect(course.laps.map((lap) => lap.totalDistance)).toEqual([
       1000, 1000, 1000, 1000,
     ]);
+  });
+});
+
+describe("parseFile errors", () => {
+  it("does not log when a course loads or when the file has no points", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      await load(fixtureClimb, "fixture-climb.gpx");
+      await expect(load("<gpx></gpx>", "empty.gpx")).rejects.toThrow(
+        "Invalid GPX"
+      );
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+    }
   });
 });
 

@@ -48,9 +48,7 @@ describe("GpxParser", () => {
       { lat: 51.535972814549, lon: -0.12, ele: 180 },
     ]);
 
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const course = await parseFile(new File([xml], "fixture-climb.gpx"));
-    log.mockRestore();
     expect(course.name).toBe("Fixture Climb");
     expect(course.points).toHaveLength(5);
     expect(
