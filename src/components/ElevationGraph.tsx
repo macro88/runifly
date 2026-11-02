@@ -9,6 +9,7 @@ import {
   courseKilometres,
   elevationSamples,
   kilometreX,
+  wholeKilometreTicks,
   type ElevationSample,
 } from "./elevationGeometry";
 
@@ -151,7 +152,7 @@ export const ElevationGraph: React.FC = () => {
       .tickFormat((d) =>
         Math.round(typeof d === "number" ? d : d.valueOf()).toString()
       )
-      .ticks(Math.min(50, Math.max(1, Math.ceil(routeKilometres))));
+      .tickValues(wholeKilometreTicks(routeKilometres));
 
     const yAxis = d3.axisLeft(yScale).ticks(7);
     g.append("g").call(xAxis).attr("transform", `translate(0,${height})`);

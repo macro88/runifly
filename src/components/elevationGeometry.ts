@@ -21,6 +21,17 @@ export function elevationSamples(points: DistancePoint[]): ElevationSample[] {
   }));
 }
 
+export function wholeKilometreTicks(routeKilometres: number): number[] {
+  const last = Math.floor(routeKilometres);
+  if (!(last > 0)) return [0];
+  const step = Math.max(1, Math.ceil(last / 50));
+  const ticks: number[] = [];
+  for (let kilometre = 0; kilometre <= last; kilometre += step) {
+    ticks.push(kilometre);
+  }
+  return ticks;
+}
+
 // Linear map from kilometres onto the plot width. A 0.6 km remainder on a
 // 1.6 km route is 0.6/1.6 of the width.
 export function kilometreX(

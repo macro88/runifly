@@ -4,6 +4,7 @@ import {
   courseKilometres,
   elevationSamples,
   kilometreX,
+  wholeKilometreTicks,
 } from "./elevationGeometry";
 
 describe("elevation chart geometry", () => {
@@ -23,9 +24,15 @@ describe("elevation chart geometry", () => {
     expect(kilometreX(1, routeKilometres, width)).toBeCloseTo(1000, 5);
     expect(kilometreX(1.4, routeKilometres, width)).toBeCloseTo(1400, 5);
     expect(kilometreX(1.6, routeKilometres, width)).toBe(width);
-    expect(kilometreX(1.6, routeKilometres, width) - kilometreX(1, routeKilometres, width)).toBeCloseTo(
-      600,
-      5
-    );
+    expect(
+      kilometreX(1.6, routeKilometres, width) - kilometreX(1, routeKilometres, width)
+    ).toBeCloseTo(600, 5);
+  });
+
+  it("keeps axis labels on whole kilometres for a short route", () => {
+    expect(wholeKilometreTicks(1.2)).toEqual([0, 1]);
+    expect(wholeKilometreTicks(1.6)).toEqual([0, 1]);
+    expect(wholeKilometreTicks(4)).toEqual([0, 1, 2, 3, 4]);
+    expect(wholeKilometreTicks(0.6)).toEqual([0]);
   });
 });
