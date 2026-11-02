@@ -34,7 +34,7 @@ const PlayListManager: React.FC<PlayListManagerProps> = () => {
       }}
     >
       <Content style={{ padding: "0 24px" }}>
-        <Space direction="vertical" style={{ width: "100%" }}>
+        <Space orientation="vertical" style={{ width: "100%" }}>
           <Row gutter={10}>
             <Col>
               <Image
@@ -47,7 +47,7 @@ const PlayListManager: React.FC<PlayListManagerProps> = () => {
             </Col>
             <Col flex="auto">
               <Space
-                direction="vertical"
+                orientation="vertical"
                 align="start"
                 style={{ width: "100%" }}
               >
@@ -79,10 +79,10 @@ const PlayListManager: React.FC<PlayListManagerProps> = () => {
           <Row>
             <CourseViewer onFileDrop={() => {}} />
           </Row>
-          <Space direction="vertical" style={{ width: "100%" }}>
+          <Space orientation="vertical" style={{ width: "100%" }}>
             {!playlistKey && <Playlists />}
             {playlistKey && playlistError && (
-              <Alert type="warning" showIcon message={playlistError} />
+              <Alert type="warning" showIcon title={playlistError} />
             )}
             {/* {playlistKey && <SongList />} */}
             <SongList />
