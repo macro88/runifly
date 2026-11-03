@@ -34,11 +34,11 @@ The helper builds, then starts Vite preview itself. Do not start a second server
 
 1. `yarn test` (Vitest, `src/**/*.test.ts`).
 2. `yarn lint` (`eslint . --max-warnings 0`).
-3. `yarn build` (`tsc && vite build`). The helper sets `VITE_SPOTIFY_CLIENT_ID=verify-not-a-secret` and `VITE_REDIRECT_TARGET` to the preview origin. Those values are dummies. They are not Spotify credentials. The helper overrides any `VITE_SPOTIFY_*` values already in the environment so a real client id is not baked into `dist/`.
+3. `yarn build` (`tsc && vite build`). The helper sets `VITE_REDIRECT_TARGET` to the preview origin and removes `VITE_SPOTIFY_CLIENT_ID` from the build environment when it is set. The app does not read a client id from the environment. The redirect value is not a Spotify credential.
 4. `yarn preview --host 127.0.0.1 --port $VERIFY_PORT --strictPort`. `VERIFY_PORT` defaults to `4173`. If that port is already taken, the helper stops and tells you to pick another. It does not kill the existing process.
 5. Ready means `GET http://127.0.0.1:$VERIFY_PORT/?fixtures=1` returns HTTP 200 and the body contains `id="root"`. The production build's Vite base is `/`, and `vite preview` serves that build at the root. Preview logs go to `.cursor/skills/verify-runifly/evidence/preview.log`.
 
-Open the app only at `/?fixtures=1`. Without that query the shared Spotify auth effect starts PKCE and the browser is sent to `accounts.spotify.com`. The helper aborts any request whose host is not `127.0.0.1` or `localhost` and fails the run if one was attempted.
+Open the app only at `/?fixtures=1`. Without that query the page shows the Spotify setup screen and does not call Spotify until a Client ID is saved and Sign in is clicked. The helper aborts any request whose host is not `127.0.0.1` or `localhost` and fails the run if one was attempted.
 
 Two verifications need two ports. Set `VERIFY_PORT` on the second. Never drive a preview this run did not start.
 
@@ -80,7 +80,7 @@ A proof is the exit code, the printed song lines, `externalRequests: 0`, a URL s
 
 The helper sends `SIGTERM` to the preview process group, then `SIGKILL` if it is still alive. It does not kill by process name. It then checks `/proc/net/tcp` again and fails if that preview still holds the listen socket. Evidence files are left in place. Confirm `song-table.png` is still on disk after the preview pid is gone. The helper prints that confirmation before `PASS`.
 
-`dist/` is the verify build and contains the dummy client id. Do not deploy it. It is gitignored.
+`dist/` is the verify build. It does not contain a Spotify client id. Do not deploy it. It is gitignored.
 
 ## Helpers
 

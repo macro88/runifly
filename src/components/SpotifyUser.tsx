@@ -1,10 +1,10 @@
-import { Avatar, Space, Typography } from "antd";
+import { Avatar, Space } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { isFixturesMode } from "../fixtures/playlist";
 import { useSpotifyAuth } from "../spotify/auth";
 
 const SpotifyUser = () => {
-  const { profile, error } = useSpotifyAuth();
+  const { profile } = useSpotifyAuth();
 
   if (isFixturesMode()) {
     return (
@@ -15,11 +15,9 @@ const SpotifyUser = () => {
     );
   }
 
-  if (error) {
-    return <Typography.Text type="danger">{error.message}</Typography.Text>;
-  }
+  if (!profile) return null;
 
-  const imageUrl = profile?.images?.[0]?.url;
+  const imageUrl = profile.images?.[0]?.url;
 
   return (
     <Space>
@@ -28,9 +26,9 @@ const SpotifyUser = () => {
         icon={imageUrl ? undefined : <UserOutlined />}
         src={imageUrl}
       >
-        {profile?.display_name}
+        {profile.display_name}
       </Avatar>
-      {profile?.display_name}
+      {profile.display_name}
     </Space>
   );
 };

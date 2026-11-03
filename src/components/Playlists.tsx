@@ -6,8 +6,8 @@ import {
 } from "@spotify/web-api-ts-sdk";
 import React, { useEffect, useState } from "react";
 import { useSpotifyAuth } from "../spotify/auth";
-import { playlistItemTotal } from "../spotify/api";
-import { Avatar, Space, Table, Typography } from "antd";
+import { playlistFailureMessage, playlistItemTotal } from "../spotify/api";
+import { Alert, Avatar, Space, Table, Typography } from "antd";
 import { ColumnsType, TablePaginationConfig, TableProps } from "antd/es/table";
 import { usePlaylistContext } from "../data/PlaylistContext";
 import {
@@ -72,6 +72,7 @@ const columns: ColumnsType<DataType> = [
 
 const Playlists: React.FC = () => {
   const [fetchedPlaylists, setFetchedPlaylists] = useState<DataType[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [openLoads, setOpenLoads] = useState(0);
   const dataSource = showingFixtures ? FIXTURE_PLAYLIST_ROWS : fetchedPlaylists;
   const loading = openLoads > 0;
@@ -101,6 +102,7 @@ const Playlists: React.FC = () => {
 
     (async () => {
       setOpenLoads((count) => count + 1);
+      setLoadError(null);
       try {
         const playlistPage: Page<SimplifiedPlaylist> | undefined =
           await sdk.currentUser.playlists.playlists(
@@ -141,6 +143,11 @@ const Playlists: React.FC = () => {
         } else {
           setFetchedPlaylists([]);
         }
+      } catch (loadFailure) {
+        console.error(loadFailure);
+        if (cancelled) return;
+        setFetchedPlaylists([]);
+        setLoadError(playlistFailureMessage(loadFailure));
       } finally {
         setOpenLoads((count) => count - 1);
       }
@@ -169,28 +176,31 @@ const Playlists: React.FC = () => {
   };
 
   return (
-    <Table
-      rowKey="key"
-      columns={columns}
-      dataSource={dataSource}
-      pagination={tableParams.pagination}
-      loading={loading}
-      onChange={handleTableChange}
-      scroll={{ y: 400 }}
-      size="small"
-      onRow={(record: DataType) => {
-        return {
-          onClick: () => {
-            setplaylistImage(record.image);
-            setplaylistName(record.name);
-            setplaylistKey(record.key);
-            setsnapshotId(record.snapshotId);
-            setPlaylistOwner(record.ownerId, record.collaborative);
-          },
-        };
-      }}
-      //sticky={true}
-    />
+    <Space orientation="vertical" style={{ width: "100%" }}>
+      {loadError && <Alert type="warning" showIcon title={loadError} />}
+      <Table
+        rowKey="key"
+        columns={columns}
+        dataSource={dataSource}
+        pagination={tableParams.pagination}
+        loading={loading}
+        onChange={handleTableChange}
+        scroll={{ y: 400 }}
+        size="small"
+        onRow={(record: DataType) => {
+          return {
+            onClick: () => {
+              setplaylistImage(record.image);
+              setplaylistName(record.name);
+              setplaylistKey(record.key);
+              setsnapshotId(record.snapshotId);
+              setPlaylistOwner(record.ownerId, record.collaborative);
+            },
+          };
+        }}
+        //sticky={true}
+      />
+    </Space>
   );
 };
 

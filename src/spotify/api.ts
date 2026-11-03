@@ -1,3 +1,5 @@
+import { messageForSpotifyError, spotifyStatusMessage } from "./httpStatus";
+
 export const SPOTIFY_ROOT = "https://api.spotify.com/v1";
 export const PLAYLIST_ITEMS_PAGE_LIMIT = 50;
 
@@ -17,8 +19,8 @@ export class PlaylistAccessError extends Error {
 export class SpotifyRequestError extends Error {
   readonly status: number;
 
-  constructor(status: number) {
-    super(`Spotify returned ${status} for this playlist.`);
+  constructor(status: number, message = `Spotify returned ${status} for this playlist.`) {
+    super(message);
     this.name = "SpotifyRequestError";
     this.status = status;
   }
@@ -88,6 +90,8 @@ export function playlistItemsBlocked(
 
 export function playlistFailureMessage(error: unknown): string | null {
   if (error == null) return null;
+  const statusMessage = messageForSpotifyError(error);
+  if (statusMessage) return statusMessage;
   if (
     error instanceof PlaylistAccessError ||
     error instanceof SpotifyRequestError ||
@@ -155,7 +159,10 @@ async function spotifyRequest(
     headers["Content-Type"] = "application/json";
   }
   const response = await fetchImpl(url, { method, headers, body });
-  if (response.status === 403) {
+  if (response.status === 403 || response.status === 429) {
+    const responseBody = await response.text();
+    const hint = spotifyStatusMessage(response.status, responseBody);
+    if (hint) throw new SpotifyRequestError(response.status, hint);
     throw new PlaylistAccessError(accessMessage);
   }
   if (!response.ok) {

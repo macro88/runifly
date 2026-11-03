@@ -29,7 +29,7 @@ Preconditions:
 
 ## Gotchas
 
-- Opening `/` without `fixtures=1` starts PKCE. The browser is sent to `accounts.spotify.com`. Do not follow it, and do not add credentials to make it succeed.
-- The dummy client id `verify-not-a-secret` is baked into the verify build on purpose. A missing fixtures guard redirects even with that dummy. The journey must still stay on the origin.
+- Opening `/` without `fixtures=1` shows the Spotify setup screen. It does not redirect until a Client ID is saved and Sign in is clicked. Do not follow a redirect to `accounts.spotify.com`, and do not add credentials to make sign-in succeed.
+- The build does not contain a Spotify client id. The journey must still stay on the origin.
 - Do not click `Sync`. Fixtures have no Spotify snapshot to write back to.
 - The header label `Fixtures` is the sign that the offline branch rendered. A blank avatar with no `Fixtures` text means the guard did not run.
