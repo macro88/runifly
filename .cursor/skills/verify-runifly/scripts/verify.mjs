@@ -52,9 +52,9 @@ const songs = [
 
 const buildEnv = {
   ...process.env,
-  VITE_SPOTIFY_CLIENT_ID: "verify-not-a-secret",
   VITE_REDIRECT_TARGET: `http://127.0.0.1:${port}/`,
 };
+delete buildEnv.VITE_SPOTIFY_CLIENT_ID;
 
 function fail(message) {
   const error = new Error(message);

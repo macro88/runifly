@@ -1,7 +1,9 @@
 /**
- * Scopes the app actually uses, requested once.
- * Playlist read/modify covers the list and reorder. user-read-private covers
- * the header profile. Image upload and email are not requested.
+ * Scopes the signed-in calls actually use.
+ * playlist-read-private and playlist-read-collaborative: the playlist list and items.
+ * playlist-modify-public and playlist-modify-private: reorder.
+ * user-read-private: the header profile (name and image).
+ * Email, library, playback, and image upload are not requested.
  */
 export const RUNIFLY_SPOTIFY_SCOPES = [
   "playlist-read-private",

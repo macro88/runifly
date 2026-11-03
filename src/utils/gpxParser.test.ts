@@ -91,4 +91,17 @@ describe("GpxParser", () => {
     expect(error).toHaveBeenCalled();
     error.mockRestore();
   });
+
+  it("keeps markup in a course name as text", async () => {
+    const xml = `<gpx><trk><name>&lt;b&gt;Hill&lt;/b&gt;</name><trkseg><trkpt lat="1" lon="2"><ele>3</ele></trkpt><trkpt lat="4" lon="5"><ele>6</ele></trkpt></trkseg></trk></gpx>`;
+    const course = await parseFile(new File([xml], "markup.gpx"));
+    expect(course.name).toBe("<b>Hill</b>");
+  });
+
+  it("does not treat a nested element in the name as a course title", async () => {
+    const xml = `<gpx><trk><name><script>alert(1)</script></name><trkseg><trkpt lat="1" lon="2"><ele>3</ele></trkpt><trkpt lat="4" lon="5"><ele>6</ele></trkpt></trkseg></trk></gpx>`;
+    const course = await parseFile(new File([xml], "nested.gpx"));
+    expect(course.name).toBe("");
+    expect(course.name.includes("<")).toBe(false);
+  });
 });

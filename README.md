@@ -5,7 +5,7 @@
 
 Runifly is a client-only web app for arranging a Spotify playlist against a route. A runner or hiker loads a GPX file, sets a pace, and connects Spotify. The app times the playlist against the route, so a song can be placed where it will be playing, for example a harder track for a hill.
 
-The interface is React and Ant Design, written in TypeScript and built with Vite. There is no backend. Sign-in uses Spotify's authorisation code flow with PKCE in the browser.
+The interface is React and Ant Design, written in TypeScript and built with Vite. There is no backend. Sign-in uses Spotify's authorisation code flow with PKCE in the browser. Each person creates a Spotify app and pastes its Client ID into the page. The id stays in that browser. The build does not contain one. Access and refresh tokens stay in session storage unless Stay signed in is ticked, which keeps them in local storage.
 
 Drop a `.gpx` file onto the course panel to load a route. The distance is taken from the track. The page opens on a generated 42.196 km course. Set the distance in kilometres, the pace in minutes per kilometre, or a target time; pace and target time follow each other. After you sign in, the app lists your Spotify playlists. Choosing one places each song on the route from its duration and the pace, and the elevation chart shows the profile. Drag songs into the order you want. The sync control writes that order back to the playlist. A control in the header switches between light and dark mode.
 
@@ -29,7 +29,7 @@ There is no screenshot in the repository.
 3. Add a redirect URI. The app builds it from Vite's base and does not hard-code the path.
    - Local development: `http://127.0.0.1:5173/`. Spotify rejects `localhost`. HTTP is accepted for a loopback address. The dev server base is `/`. `VITE_REDIRECT_TARGET` may be `http://127.0.0.1:5173` or the same URI with a trailing slash. Sign-in keeps that loopback host, so it still returns to port 5173 when the address bar says `localhost`. The app does not start sign-in unless the configured value is `http://127.0.0.1:<port>` or an `https://` URL.
    - Production, at [https://runifly.com/](https://runifly.com/): the production base is `/`. On that site the callback is the page origin plus the base, `https://runifly.com/`.
-4. Copy the Client ID into `.env`, as below. Leave the client secret out of the repository. PKCE does not use it, and any `VITE_` variable is compiled into the JavaScript the browser downloads.
+4. Copy the Client ID. Leave the client secret in the Spotify dashboard. PKCE does not use it, and the app never asks for it. Paste the Client ID into the setup screen. It is stored in local storage on that browser until you remove it. There is no client id in `.env`, in the JavaScript bundle, or in the publish workflow.
 
 ### Environment
 
@@ -39,12 +39,11 @@ cp .env.example .env
 
 | Name | Purpose |
 | --- | --- |
-| `VITE_SPOTIFY_CLIENT_ID` | Client ID from the Spotify dashboard. |
 | `VITE_REDIRECT_TARGET` | A Spotify-legal redirect: `http://127.0.0.1:5173` locally, or an `https://` URL for a production build. The path sent to Spotify is Vite's base, not a path typed into this variable. |
 
-`.env` is listed in `.gitignore`. The committed template is `.env.example`.
+`.env` is listed in `.gitignore`. The committed template is `.env.example`. The Client ID is not an environment variable.
 
-The GitHub Actions workflow that publishes `main` supplies `VITE_SPOTIFY_CLIENT_ID` from a repository secret and `VITE_REDIRECT_TARGET` from a repository variable at build time. That build does not read `.env`. The variable has to be an `https://` URL. On [https://runifly.com/](https://runifly.com/) the callback is `https://runifly.com/`, from the page origin and the `/` base.
+The GitHub Actions workflow that publishes `main` supplies `VITE_REDIRECT_TARGET` from a repository variable at build time. That build does not read `.env` and does not inject a Spotify client id. The variable has to be an `https://` URL. On [https://runifly.com/](https://runifly.com/) the callback is `https://runifly.com/`, from the page origin and the `/` base.
 
 ### Install and run
 
@@ -53,7 +52,7 @@ yarn
 yarn dev --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173). The setup screen asks for the Client ID. Try with sample data opens the page with `?fixtures=1` and does not contact Spotify.
 
 `yarn dev` with no extra flags starts Vite on port 5173 and prints `http://localhost:5173/`. That process listens on localhost. Spotify rejects `localhost` as a redirect URI, and a connection to `http://127.0.0.1:5173` is refused while the server is bound that way. `--host 127.0.0.1` makes Vite serve `http://127.0.0.1:5173/`. The dev base is `/`, so the redirect URI is `http://127.0.0.1:5173/` when `VITE_REDIRECT_TARGET` names that loopback origin. `--strictPort` makes Vite exit when 5173 is already taken, so the redirect URI stays on that port.
 

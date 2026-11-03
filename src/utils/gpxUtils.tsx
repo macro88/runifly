@@ -214,6 +214,7 @@ function asList<T>(value: T | T[] | undefined | null): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
+/** GPX names are untrusted file text. Callers render the string, never as HTML. */
 function readName(value: unknown): string {
   if (typeof value === "string" || typeof value === "number") return String(value);
   return "";

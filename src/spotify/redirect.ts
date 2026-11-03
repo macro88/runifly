@@ -61,3 +61,33 @@ export function resolveSpotifyRedirectUri(
   if (page) return new URL(base, page.origin).href;
   return new URL(base, configuredUrl.origin).href;
 }
+
+/**
+ * localhost and 127.0.0.1 do not share storage. When Spotify will send the
+ * browser to the loopback redirect, return that same page on the callback
+ * origin so the client id and PKCE verifier are still there.
+ */
+export function hrefOnCallbackOrigin(
+  pageHref: string,
+  configured: string | undefined,
+  baseUrl: string,
+): string | undefined {
+  const redirect = resolveSpotifyRedirectUri(configured, baseUrl, pageHref);
+  if (!redirect) return undefined;
+  let page: URL;
+  let callback: URL;
+  try {
+    page = new URL(pageHref);
+    callback = new URL(redirect);
+  } catch {
+    return undefined;
+  }
+  if (page.origin === callback.origin) return undefined;
+  const pageIsLoopback =
+    page.hostname === "localhost" || page.hostname === "127.0.0.1";
+  if (!pageIsLoopback || callback.hostname !== "127.0.0.1") return undefined;
+  page.protocol = callback.protocol;
+  page.hostname = callback.hostname;
+  page.port = callback.port;
+  return page.href;
+}

@@ -4,7 +4,7 @@
 
 Requirements and Spotify setup are in the [README](README.md). In short:
 
-1. Copy `.env.example` to `.env` and set `VITE_SPOTIFY_CLIENT_ID` and `VITE_REDIRECT_TARGET`.
+1. Copy `.env.example` to `.env` and set `VITE_REDIRECT_TARGET`. The Spotify Client ID is entered in the app, not in `.env`. Do not put a client secret in the repository.
 2. Install dependencies with Yarn Classic (the repository has a Yarn 1 `yarn.lock`):
 
    ```sh

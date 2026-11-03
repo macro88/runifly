@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  SPOTIFY_RATE_LIMIT_MESSAGE,
+  SPOTIFY_USER_MANAGEMENT_MESSAGE,
+} from "./httpStatus";
+import {
   PLAYLIST_ITEMS_ACCESS_MESSAGE,
   PlaylistAccessError,
   PlaylistReorderInterrupted,
@@ -8,6 +12,7 @@ import {
   fetchAllPlaylistItems,
   planPlaylistReorder,
   planSerialReorders,
+  playlistFailureMessage,
   playlistItemTotal,
   playlistItemsBlocked,
   reorderPlaylistItems,
@@ -87,6 +92,42 @@ describe("fetchAllPlaylistItems", () => {
       name: "PlaylistAccessError",
       message: PLAYLIST_ITEMS_ACCESS_MESSAGE,
     });
+    expect(calls).toBe(1);
+  });
+
+  it("reports a 403 from User Management instead of an empty track list", async () => {
+    const fetchImpl: typeof fetch = async () =>
+      jsonResponse(
+        {
+          error: {
+            status: 403,
+            message: "User not registered in the Developer Dashboard",
+          },
+        },
+        403
+      );
+
+    try {
+      await fetchAllPlaylistItems("playlist-1", "token-1", fetchImpl);
+      throw new Error("expected a 403");
+    } catch (error) {
+      expect(playlistFailureMessage(error)).toBe(SPOTIFY_USER_MANAGEMENT_MESSAGE);
+    }
+  });
+
+  it("reports a 429 as Spotify rate limiting", async () => {
+    let calls = 0;
+    const fetchImpl: typeof fetch = async () => {
+      calls += 1;
+      return jsonResponse({ error: { status: 429, message: "API rate limit exceeded" } }, 429);
+    };
+
+    try {
+      await fetchAllPlaylistItems("playlist-1", "token-1", fetchImpl);
+      throw new Error("expected a 429");
+    } catch (error) {
+      expect(playlistFailureMessage(error)).toBe(SPOTIFY_RATE_LIMIT_MESSAGE);
+    }
     expect(calls).toBe(1);
   });
 });

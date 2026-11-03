@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isSpotifyRedirectUri, resolveSpotifyRedirectUri } from "./redirect";
+import {
+  hrefOnCallbackOrigin,
+  isSpotifyRedirectUri,
+  resolveSpotifyRedirectUri,
+} from "./redirect";
 
 describe("resolveSpotifyRedirectUri", () => {
   it("keeps the configured loopback origin when the address bar says localhost", () => {
@@ -48,6 +52,26 @@ describe("resolveSpotifyRedirectUri", () => {
     expect(
       resolveSpotifyRedirectUri("https://runifly.com/", "/", ""),
     ).toBe("https://runifly.com/");
+  });
+
+  it("moves a localhost page onto the 127.0.0.1 callback origin", () => {
+    expect(
+      hrefOnCallbackOrigin(
+        "http://localhost:5173/?fixtures=1#pace",
+        "http://127.0.0.1:5173",
+        "/",
+      ),
+    ).toBe("http://127.0.0.1:5173/?fixtures=1#pace");
+    expect(
+      hrefOnCallbackOrigin(
+        "http://127.0.0.1:5173/?fixtures=1",
+        "http://127.0.0.1:5173",
+        "/",
+      ),
+    ).toBeUndefined();
+    expect(
+      hrefOnCallbackOrigin("https://runifly.com/", "http://127.0.0.1:5173/", "/"),
+    ).toBeUndefined();
   });
 
   it("returns undefined when the configured value is missing or not a URL", () => {
