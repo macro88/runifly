@@ -74,6 +74,13 @@ const Playlists: React.FC = () => {
   const [fetchedPlaylists, setFetchedPlaylists] = useState<DataType[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [openLoads, setOpenLoads] = useState(0);
+  const [listedSdk, setListedSdk] = useState<SpotifyApi | null>(null);
+  const { sdk }: { sdk: SpotifyApi | null } = useSpotifyAuth();
+  if (!showingFixtures && listedSdk !== sdk) {
+    setListedSdk(sdk);
+    setFetchedPlaylists([]);
+    setLoadError(null);
+  }
   const dataSource = showingFixtures ? FIXTURE_PLAYLIST_ROWS : fetchedPlaylists;
   const loading = openLoads > 0;
   const {
@@ -91,7 +98,6 @@ const Playlists: React.FC = () => {
     },
   });
 
-  const { sdk }: { sdk: SpotifyApi | null } = useSpotifyAuth();
   const page = tableParams.pagination?.current ?? 1;
   const pageSize = tableParams.pagination?.pageSize ?? 50;
 

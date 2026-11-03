@@ -161,7 +161,6 @@ export function useRuniflyPlaylist(
     let cancelled = false;
 
     (async () => {
-      if (!isFixturesMode() && playlistKey !== undefined && !sdk) return;
       const activeSdk = sdk;
 
       try {

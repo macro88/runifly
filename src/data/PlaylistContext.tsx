@@ -10,6 +10,8 @@ import React, {
 } from "react";
 import { RuniflySong, useRuniflyPlaylist } from "../hooks/useSpotifyPlaylist";
 import { playlistFailureMessage } from "../spotify/api";
+import { isFixturesMode } from "../fixtures/playlist";
+import { useSpotifyAuth } from "../spotify/auth";
 import { useCourseContext } from "./CourseContext";
 import { updateTimingData } from "./timing";
 
@@ -87,6 +89,7 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   const [playlistCollaborative, setPlaylistCollaborative] = useState(false);
   const [hoveredSong, sethoveredSong] = useState<RuniflySong>();
   const [syncRequired, setsyncRequired] = useState<boolean>(false);
+  const { sdk } = useSpotifyAuth();
   const { pace } = useCourseContext();
 
   const { data, error, loading, updateData } = useRuniflyPlaylist(
@@ -116,7 +119,17 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     pace: number;
     songs: RuniflySong[];
   } | null>(null);
-  if (
+  if (!isFixturesMode() && !sdk && playlistKey !== undefined) {
+    setplaylistKey(undefined);
+    setsnapshotId(undefined);
+    setPlaylistOwnerId(undefined);
+    setPlaylistCollaborative(false);
+    setplaylistImage(undefined);
+    setplaylistName(defaultValues.playlistName);
+    sethoveredSong(undefined);
+    setsyncRequired(false);
+    setSongOverride(null);
+  } else if (
     songOverride !== null &&
     (songOverride.source !== data || songOverride.pace !== pace)
   ) {

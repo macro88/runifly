@@ -24,6 +24,7 @@ import {
   isStalePkceError,
   oauthCallbackMessage,
 } from "./pkce";
+import { hrefOnCallbackOrigin } from "./redirect";
 import { abandonSpotifyConnection, loadSignedInSdk } from "./session";
 import {
   loadStaySignedIn,
@@ -65,6 +66,17 @@ function readInitialOauthError(): string | null {
   }
   initialOauthError = message;
   return message;
+}
+
+function replaceWithCallbackOrigin(): boolean {
+  const next = hrefOnCallbackOrigin(
+    window.location.href,
+    import.meta.env.VITE_REDIRECT_TARGET,
+    import.meta.env.BASE_URL,
+  );
+  if (!next) return false;
+  window.location.replace(next);
+  return true;
 }
 
 function toAuthError(error: unknown): Error {
@@ -135,6 +147,7 @@ export function SpotifyAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (replaceWithCallbackOrigin()) return;
     if (isFixturesMode()) return;
     if (initialOauthError) return;
     if (!clientId) return;
@@ -170,6 +183,7 @@ export function SpotifyAuthProvider({ children }: { children: ReactNode }) {
   }, [clientId]);
 
   const saveClientId = useCallback((value: string): string | null => {
+    if (replaceWithCallbackOrigin()) return null;
     const problem = clientIdProblem(value);
     if (problem) return problem;
     writeStoredClientId(window.localStorage, value);
@@ -186,6 +200,7 @@ export function SpotifyAuthProvider({ children }: { children: ReactNode }) {
   }, [applySignedOut]);
 
   const signIn = useCallback(() => {
+    if (replaceWithCallbackOrigin()) return;
     if (!clientId) return;
     const problem = clientIdProblem(clientId);
     if (problem) {
