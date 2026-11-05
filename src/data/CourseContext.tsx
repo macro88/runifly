@@ -15,6 +15,7 @@ import {
   clampClimbCost,
   effectiveHillAdjust,
   parseClimbCost,
+  adjustedRunSecondsForDistance,
   parseHillAdjust,
   timingCurveForCourse,
   type CourseElevation,
@@ -115,7 +116,16 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
       ),
     [adjustForHills, climbCostSecondsPerMetre, gpx, pace]
   );
-  const adjustedRunSeconds = hillCurve ? hillCurve.totalTimeSeconds : null;
+  const adjustedRunSeconds = useMemo(() => {
+    if (!hillCurve) return null;
+    const last = gpx.points[gpx.points.length - 1];
+    const gpxKilometres = last ? last.totalDistance / 1000 : 0;
+    return adjustedRunSecondsForDistance(
+      hillCurve.totalTimeSeconds,
+      gpxKilometres,
+      distance
+    );
+  }, [distance, gpx, hillCurve]);
 
   const setAdjustForHills = useCallback((on: boolean) => {
     window.localStorage.setItem(HILL_ADJUST_STORAGE_KEY, on ? "1" : "0");

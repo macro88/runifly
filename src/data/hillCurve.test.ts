@@ -3,6 +3,7 @@ import { FIXTURE_TRACKS } from "../fixtures/playlist";
 import type { RuniflySong } from "../hooks/useSpotifyPlaylist";
 import { createFakeGpx } from "../utils/gpxUtils";
 import {
+  adjustedRunSecondsForDistance,
   buildTimeDistanceCurve,
   classifyCourseElevation,
   clampClimbCost,
@@ -191,6 +192,29 @@ describe("timingCurveForCourse", () => {
     buildTimeDistanceCurve(samples, PACE, 6);
 
     expect(samples).toEqual(before);
+  });
+});
+
+describe("adjustedRunSecondsForDistance", () => {
+  // Fixture Climb at 5:00/km: 4 * 300 + 150 * 6.
+  const fixtureSeconds = 2100;
+
+  it("scales a 4 km climb to a 10 km entered distance", () => {
+    const seconds = adjustedRunSecondsForDistance(fixtureSeconds, 4, 10);
+
+    expect(seconds).toBe(5250);
+    expect(seconds).toBeGreaterThan(10 * 300);
+  });
+
+  it("scales a 4 km climb down when the entered distance is shorter", () => {
+    const seconds = adjustedRunSecondsForDistance(fixtureSeconds, 4, 2);
+
+    expect(seconds).toBe(1050);
+    expect(seconds).toBeGreaterThan(2 * 300);
+  });
+
+  it("keeps the GPX total when the form distance matches", () => {
+    expect(adjustedRunSecondsForDistance(fixtureSeconds, 4, 4)).toBe(fixtureSeconds);
   });
 });
 

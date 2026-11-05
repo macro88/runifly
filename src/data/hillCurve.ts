@@ -177,6 +177,21 @@ export function kilometresAtTime(
   return last.distanceKilometres + (timeSeconds - last.timeSeconds) / pace;
 }
 
+/**
+ * Coverage length for the distance on the form. The curve is the GPX; when
+ * the form distance differs, the same climb ratio is applied to that distance.
+ * A matching distance returns the curve total unchanged.
+ */
+export function adjustedRunSecondsForDistance(
+  curveSeconds: number,
+  gpxKilometres: number,
+  enteredKilometres: number
+): number {
+  if (!(gpxKilometres > 0) || !(enteredKilometres > 0)) return curveSeconds;
+  if (enteredKilometres === gpxKilometres) return curveSeconds;
+  return curveSeconds * (enteredKilometres / gpxKilometres);
+}
+
 /** Null keeps today's flat placement: toggle off, cost 0, or no recorded gain. */
 export function timingCurveForCourse(
   points: readonly DistancePoint[],

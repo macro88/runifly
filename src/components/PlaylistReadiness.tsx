@@ -51,7 +51,7 @@ const PlaylistReadiness = () => {
 
   // The run is the target on the form. Reset can pin a different pace for the
   // song rows without changing that target. Hills leave that target alone and
-  // pass the longer adjusted total while the climb cost is in use.
+  // pass the climb-adjusted total for the distance on the form.
   const coverage = playlistCoverage({
     durationsSeconds: songs.map((song) => song.songDuration),
     runSeconds: adjustedRunSeconds ?? targetTime.asSeconds(),
