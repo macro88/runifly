@@ -7,6 +7,7 @@ import {
   maskClientId,
   SPOTIFY_ACCOUNT_APPS_URL,
 } from "../spotify/clientId";
+import { OAUTH_ERROR_MESSAGE } from "../spotify/pkce";
 import { STAY_SIGNED_IN_KEY } from "../spotify/tokenStore";
 
 const { loadSignedInSdk } = vi.hoisted(() => ({
@@ -315,6 +316,45 @@ describe("Spotify account menu", () => {
     );
     expect(window.localStorage.getItem(CLIENT_ID_STORAGE_KEY)).toBeNull();
     expect(accountButton()).toBeNull();
+  });
+
+  it("opens settings when Spotify sends the browser back with an error", async () => {
+    await mount("http://127.0.0.1:5173/?error=access_denied", () => {
+      window.localStorage.setItem(CLIENT_ID_STORAGE_KEY, VALID_ID);
+    });
+
+    await waitFor(
+      "oauth settings",
+      () => document.body.textContent?.includes(OAUTH_ERROR_MESSAGE) ?? false
+    );
+    const panel = settingsDialog();
+    expect(panel.textContent).toContain(OAUTH_ERROR_MESSAGE);
+    expect(content().textContent).not.toContain("Spotify settings");
+
+    const close = panel.querySelector("button[aria-label='Close']");
+    if (!(close instanceof HTMLButtonElement)) throw new Error("missing close button");
+    await click(close);
+    await waitFor(
+      "closed settings",
+      () => !document.body.textContent?.includes("Revoke this app on Spotify")
+    );
+  });
+
+  it("opens settings when Sign in from the menu fails", async () => {
+    loadSignedInSdk.mockRejectedValue(new Error("token exchange failed"));
+    await mount("http://127.0.0.1:5173/", () => {
+      window.localStorage.setItem(CLIENT_ID_STORAGE_KEY, VALID_ID);
+    });
+
+    expect(document.body.textContent).not.toContain("token exchange failed");
+    await openMenu();
+    await click(menuItem("Sign in"));
+    await waitFor(
+      "sign-in error",
+      () => document.body.textContent?.includes("token exchange failed") ?? false
+    );
+    expect(settingsDialog().textContent).toContain("token exchange failed");
+    expect(window.localStorage.getItem(CLIENT_ID_STORAGE_KEY)).toBe(VALID_ID);
   });
 
   it("leaves fixtures mode on the playlist UI without an account menu", async () => {

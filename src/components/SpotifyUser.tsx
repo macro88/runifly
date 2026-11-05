@@ -16,8 +16,20 @@ const accountButtonStyle = {
 };
 
 const SpotifyUser = () => {
-  const { profile, clientId, sdk, signIn, signOut } = useSpotifyAuth();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { profile, clientId, sdk, error, oauthError, signIn, signOut } =
+    useSpotifyAuth();
+  const failure = error ?? oauthError;
+  const [openedByUser, setOpenedByUser] = useState(false);
+  const [dismissedFailure, setDismissedFailure] = useState<Error | string | null>(
+    null
+  );
+  const settingsOpen =
+    openedByUser || (failure != null && failure !== dismissedFailure);
+
+  const closeSettings = () => {
+    setOpenedByUser(false);
+    setDismissedFailure(failure);
+  };
 
   if (isFixturesMode()) {
     return (
@@ -38,7 +50,7 @@ const SpotifyUser = () => {
   items.push({ key: "sign-out", label: "Sign out" });
 
   const onMenuClick: MenuProps["onClick"] = ({ key }) => {
-    if (key === "settings") setSettingsOpen(true);
+    if (key === "settings") setOpenedByUser(true);
     if (key === "sign-in") signIn();
     if (key === "sign-out") signOut();
   };
@@ -72,7 +84,7 @@ const SpotifyUser = () => {
           </span>
         </button>
       </Dropdown>
-      <SpotifySettings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SpotifySettings open={settingsOpen} onClose={closeSettings} />
     </>
   );
 };
