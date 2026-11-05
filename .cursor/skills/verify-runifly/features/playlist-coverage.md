@@ -32,6 +32,7 @@ Preconditions:
 ## Gotchas
 
 - Crossfade does not move the song rows. The kilometre and race-time checks stay the ones taken at `05:00`, before this part changes the pace.
+- Adjust for hills is off for these sentences. The 11 minute warning is the flat 20:00 run. The hill check, later in the same journey, is the one that uses the adjusted total.
 - A typed crossfade is stored when the field is left, not on the first digit. `12` is a stored crossfade. An empty field is not. After a reload the field must show `12`, not a blank box.
 - At `02:00` per kilometre the fixture songs still cover the run with a 12 second crossfade (486.5 seconds of music against an 8:00 run).
 - The strip is absent until the playlist has tracks. Wait for the crossfade field after choosing the playlist.

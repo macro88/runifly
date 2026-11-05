@@ -13,6 +13,7 @@ import { playlistFailureMessage } from "../spotify/api";
 import { isFixturesMode } from "../fixtures/playlist";
 import { useSpotifyAuth } from "../spotify/auth";
 import { useCourseContext } from "./CourseContext";
+import type { TimeDistanceCurve } from "./hillCurve";
 import { updateTimingData } from "./timing";
 
 interface PlaylistContextType {
@@ -90,7 +91,7 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   const [hoveredSong, sethoveredSong] = useState<RuniflySong>();
   const [syncRequired, setsyncRequired] = useState<boolean>(false);
   const { sdk } = useSpotifyAuth();
-  const { pace } = useCourseContext();
+  const { pace, hillCurve } = useCourseContext();
 
   const { data, error, loading, updateData } = useRuniflyPlaylist(
     playlistKey,
@@ -108,15 +109,16 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
   );
 
   const timedSongs = useMemo(
-    () => updateTimingData(data, pace),
-    [data, pace]
+    () => updateTimingData(data, pace, hillCurve),
+    [data, hillCurve, pace]
   );
-  // Drag and reset hold a list only while the fetched songs and pace stay put.
-  // Drop the hold when either changes, so a later return to the same pace
-  // cannot bring back an order the pace change already discarded.
+  // Drag and reset hold a list only while the fetched songs, pace, and hill
+  // curve stay put. Drop the hold when any of them changes, so a later return
+  // cannot bring back an order that change already discarded.
   const [songOverride, setSongOverride] = useState<{
     source: RuniflySong[];
     pace: number;
+    hillCurve: TimeDistanceCurve | null;
     songs: RuniflySong[];
   } | null>(null);
   if (!isFixturesMode() && !sdk && playlistKey !== undefined) {
@@ -131,14 +133,17 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
     setSongOverride(null);
   } else if (
     songOverride !== null &&
-    (songOverride.source !== data || songOverride.pace !== pace)
+    (songOverride.source !== data ||
+      songOverride.pace !== pace ||
+      songOverride.hillCurve !== hillCurve)
   ) {
     setSongOverride(null);
   }
   const songs =
     songOverride !== null &&
     songOverride.source === data &&
-    songOverride.pace === pace
+    songOverride.pace === pace &&
+    songOverride.hillCurve === hillCurve
       ? songOverride.songs
       : timedSongs;
 
@@ -155,23 +160,24 @@ export const PlaylistProvider: React.FC<PlaylistProviderProps> = ({
       setSongOverride({
         source: data,
         pace,
-        songs: updateTimingData(newSongs, pace),
+        hillCurve,
+        songs: updateTimingData(newSongs, pace, hillCurve),
       });
     },
-    [data, pace]
+    [data, hillCurve, pace]
   );
 
   const reset = useCallback(() => {
     setplaylistKey(defaultValues.playlistKey);
     sethoveredSong(defaultValues.hoveredSong);
-    setSongOverride({ source: data, pace, songs: [] });
+    setSongOverride({ source: data, pace, hillCurve, songs: [] });
     setsyncRequired(false);
     setplaylistImage(undefined);
     setplaylistName(defaultValues.playlistName);
     setsnapshotId(undefined);
     setPlaylistOwnerId(undefined);
     setPlaylistCollaborative(false);
-  }, [data, pace]);
+  }, [data, hillCurve, pace]);
 
   const value = useMemo(
     () => ({

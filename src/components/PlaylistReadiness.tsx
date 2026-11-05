@@ -40,7 +40,7 @@ function storedCrossfadeFromInput(value: number | string | null): number | null 
 
 const PlaylistReadiness = () => {
   const { playlistKey, songs, loading, playlistError } = usePlaylistContext();
-  const { targetTime } = useCourseContext();
+  const { targetTime, adjustedRunSeconds } = useCourseContext();
   const [shuffleOff, setShuffleOff] = useState(false);
   const [crossfade, setCrossfade] = useState<number | null>(readStoredCrossfade);
   const [crossfadeDraft, setCrossfadeDraft] = useState<number | null>(crossfade);
@@ -50,10 +50,11 @@ const PlaylistReadiness = () => {
   }
 
   // The run is the target on the form. Reset can pin a different pace for the
-  // song rows without changing that target.
+  // song rows without changing that target. Hills leave that target alone and
+  // pass the longer adjusted total while the climb cost is in use.
   const coverage = playlistCoverage({
     durationsSeconds: songs.map((song) => song.songDuration),
-    runSeconds: targetTime.asSeconds(),
+    runSeconds: adjustedRunSeconds ?? targetTime.asSeconds(),
     crossfadeSeconds: crossfade ?? 0,
   });
   const checklistDone = shuffleOff && crossfade !== null;

@@ -33,7 +33,7 @@ The same numbers are asserted without the browser in `src/data/timing.test.ts` a
 
 ## Gotchas
 
-- These strings are today's baseline. A pull request that changes the timing formula updates this file's list, the `songs` array in `scripts/verify.mjs`, and `src/data/timing.test.ts` together. A pull request that only fixes GPX distance, laps, or the chart does not change these strings. Song timing does not read the GPX.
+- These strings are today's flat baseline. The journey turns Adjust for hills off before it reads them. Fixture Climb would otherwise start with the toggle on, and at `05:00` these songs still finish before the climb, but the coverage sentences would not. A pull request that changes the flat timing formula updates this file's list, the `songs` array in `scripts/verify.mjs`, and `src/data/timing.test.ts` together. A pull request that only fixes GPX distance, laps, or the chart does not change these strings. Flat song timing does not read the GPX. Hill timing does, and it is checked separately.
 - The song table is the timing oracle. The band-edge check uses the same kilometre numbers as a chart scale, not as a second timing formula. Do not assert lap totals or `createFakeGpx` in this journey. Details are in the skill section "Baseline that later fixes will move".
 - Kilometre cells are the pace-sensitive proof. Race times do not change when the pace changes, so a race-time match on its own does not prove the pace was applied.
 - Matching `0 - 0.6` as a substring of a longer cell is not enough for a future edit. The helper compares whole `td` strings.

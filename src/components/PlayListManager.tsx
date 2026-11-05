@@ -1,4 +1,5 @@
 import { Alert, Col, Row, Space, Typography, Image, Layout, theme } from "antd";
+import HillTiming from "./HillTiming";
 import TargetTimePace from "./TargetTimePace";
 import CourseViewer from "./CourseViewer";
 import { useCourseContext } from "../data/CourseContext";
@@ -63,6 +64,7 @@ const PlayListManager = () => {
                   </Typography.Title>
                 </div>
                 <TargetTimePace />
+                <HillTiming />
               </Space>
             </Col>
             <Col>
