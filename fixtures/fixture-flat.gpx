@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic course for Runifly verification. Not a recorded trace.
+  One track, one segment, three points, each a kilometre due north of the
+  last on a sphere of radius 6371008.8 m (src/utils/gpxUtils.tsx).
+  No elevation elements. Licence-free: generated for this repository.
+-->
+<gpx version="1.1" creator="runifly-fixtures" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Fixture Flat</name>
+    <trkseg>
+      <trkpt lat="51.500000000000" lon="-0.120000000000"></trkpt>
+      <trkpt lat="51.508993203637" lon="-0.120000000000"></trkpt>
+      <trkpt lat="51.517986407274" lon="-0.120000000000"></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

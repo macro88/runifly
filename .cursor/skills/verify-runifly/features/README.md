@@ -14,7 +14,7 @@ This directory is the maintained source for verifying Runifly's user-facing beha
 ## Driving conventions
 
 - The harness is `node .cursor/skills/verify-runifly/scripts/verify.mjs`, invoked as `yarn verify`.
-- One command runs the whole journey: select the fixture playlist, load the sample GPX, set the pace to `05:00`, read the song table, then check playlist coverage and the pre-run checklist.
+- One command runs the whole journey: select the fixture playlist, load the sample GPX, turn Adjust for hills off, set the pace to `05:00`, read the song table, check playlist coverage and the pre-run checklist, then check hill-adjusted timing.
 - Prefer the accessible names in the feature files (`Pace`, `Distance`, `Course GPX file`, row text) over coordinates.
 - Treat the expected cell text as literal. Kilometres drop trailing zeros (`0.6`, not `0.60`). Race times are not zero-padded hours.
 - Restore nothing in the app. The preview is disposable. Do not delete proof files during cleanup.
@@ -38,3 +38,4 @@ Each feature file starts with an H1 and one paragraph of user-visible behaviour,
 - [Set the pace](./set-pace.md) covers the pace control after a course is loaded.
 - [Song timing](./song-timing.md) covers the kilometre and race-time columns for the fixture tracks at 5:00 per kilometre.
 - [Playlist coverage](./playlist-coverage.md) covers the shortfall warning and the pre-run checklist. It runs after the song table has been read.
+- [Hill timing](./hill-timing.md) covers Adjust for hills. It runs after the coverage checks, with the toggle off and crossfade stored as 12.

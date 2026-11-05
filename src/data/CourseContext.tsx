@@ -9,6 +9,19 @@ import React, {
 } from "react";
 import { Gpx, createFakeGpx } from "../utils/gpxUtils";
 import {
+  CLIMB_COST_STORAGE_KEY,
+  HILL_ADJUST_STORAGE_KEY,
+  classifyCourseElevation,
+  clampClimbCost,
+  effectiveHillAdjust,
+  parseClimbCost,
+  adjustedRunSecondsForDistance,
+  parseHillAdjust,
+  timingCurveForCourse,
+  type CourseElevation,
+  type TimeDistanceCurve,
+} from "./hillCurve";
+import {
   RaceDuration,
   calculatePace,
   starterTargetTime,
@@ -20,10 +33,17 @@ interface CourseContextType {
   targetTime: RaceDuration;
   name: string;
   gpx: Gpx;
+  courseElevation: CourseElevation;
+  adjustForHills: boolean;
+  climbCostSecondsPerMetre: number;
+  hillCurve: TimeDistanceCurve | null;
+  adjustedRunSeconds: number | null;
   setDistance: (distance: number) => void;
   setTargetTime: (targetTime: RaceDuration) => void;
   setName: (name: string) => void;
   setGpx: (gpx: Gpx) => void;
+  setAdjustForHills: (on: boolean) => void;
+  setClimbCost: (secondsPerMetre: number) => void;
   reset: () => void;
 }
 
@@ -51,6 +71,12 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
   const [pinnedPace, setPinnedPace] = useState<number | null>(null);
   const [name, setName] = useState<string>(defaultValues.name);
   const [gpx, setGpx] = useState<Gpx>(defaultValues.gpx);
+  const [climbCostSecondsPerMetre, setClimbCostSecondsPerMetre] = useState(() =>
+    parseClimbCost(window.localStorage.getItem(CLIMB_COST_STORAGE_KEY))
+  );
+  const [hillAdjustPreference, setHillAdjustPreference] = useState<boolean | null>(
+    () => parseHillAdjust(window.localStorage.getItem(HILL_ADJUST_STORAGE_KEY))
+  );
 
   const setDistance = useCallback((next: number) => {
     setPinnedPace(null);
@@ -72,6 +98,45 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
   }, [distance]);
 
   const pace = pinnedPace ?? calculatePace(targetTime, distance).asSeconds();
+  const courseElevation = useMemo(
+    () => classifyCourseElevation(gpx.points),
+    [gpx]
+  );
+  const adjustForHills = effectiveHillAdjust(
+    hillAdjustPreference,
+    courseElevation
+  );
+  const hillCurve = useMemo(
+    () =>
+      timingCurveForCourse(
+        gpx.points,
+        pace,
+        climbCostSecondsPerMetre,
+        adjustForHills
+      ),
+    [adjustForHills, climbCostSecondsPerMetre, gpx, pace]
+  );
+  const adjustedRunSeconds = useMemo(() => {
+    if (!hillCurve) return null;
+    const last = gpx.points[gpx.points.length - 1];
+    const gpxKilometres = last ? last.totalDistance / 1000 : 0;
+    return adjustedRunSecondsForDistance(
+      hillCurve.totalTimeSeconds,
+      gpxKilometres,
+      distance
+    );
+  }, [distance, gpx, hillCurve]);
+
+  const setAdjustForHills = useCallback((on: boolean) => {
+    window.localStorage.setItem(HILL_ADJUST_STORAGE_KEY, on ? "1" : "0");
+    setHillAdjustPreference(on);
+  }, []);
+
+  const setClimbCost = useCallback((secondsPerMetre: number) => {
+    const next = clampClimbCost(secondsPerMetre);
+    window.localStorage.setItem(CLIMB_COST_STORAGE_KEY, String(next));
+    setClimbCostSecondsPerMetre(next);
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -80,13 +145,36 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
       targetTime,
       name,
       gpx,
+      courseElevation,
+      adjustForHills,
+      climbCostSecondsPerMetre,
+      hillCurve,
+      adjustedRunSeconds,
       setDistance,
       setTargetTime,
       setName,
       reset,
       setGpx,
+      setAdjustForHills,
+      setClimbCost,
     }),
-    [distance, gpx, name, pace, reset, setDistance, setTargetTime, targetTime]
+    [
+      adjustForHills,
+      adjustedRunSeconds,
+      climbCostSecondsPerMetre,
+      courseElevation,
+      distance,
+      gpx,
+      hillCurve,
+      name,
+      pace,
+      reset,
+      setAdjustForHills,
+      setClimbCost,
+      setDistance,
+      setTargetTime,
+      targetTime,
+    ]
   );
 
   return (

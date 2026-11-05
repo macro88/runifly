@@ -20,6 +20,7 @@ const evidenceDir = path.join(
   ".cursor/skills/verify-runifly/evidence"
 );
 const gpxPath = path.join(root, "fixtures/fixture-climb.gpx");
+const flatGpxPath = path.join(root, "fixtures/fixture-flat.gpx");
 const port = Number(process.env.VERIFY_PORT || 4173);
 const pageUrl = `http://127.0.0.1:${port}/?fixtures=1`;
 
@@ -334,8 +335,14 @@ async function shortfallLine(page) {
 
 const SHORT_AT_FIVE =
   "This playlist is about 11 minutes short of your run. Music will stop early unless you add songs or shorten the course.";
+const SHORT_AT_FIVE_ADJUSTED =
+  "This playlist is about 27 minutes short of your run. Music will stop early unless you add songs or shorten the course.";
 const COVERAGE_INCOMPLETE =
   "Timing only holds if shuffle is off and crossfade matches what you enter below.";
+const HILL_HINT =
+  "Climbs add time, so later songs stay on the map. Descents keep your flat pace.";
+const NO_ELEVATION =
+  "This route has no elevation data, so timing stays flat.";
 
 async function assertShortfallThenCovered(page) {
   await page.getByText(SHORT_AT_FIVE).waitFor({ timeout: 5000 });
@@ -445,6 +452,236 @@ async function assertShortfallRefreshes(page) {
   console.log(`coverage: warning refreshed from "${before}" to "${after}"`);
 }
 
+function hillSwitch(page) {
+  return page.getByRole("switch", { name: "Adjust for hills" });
+}
+
+async function waitForHillAdjust(page, on) {
+  const hill = hillSwitch(page);
+  await hill.waitFor({ timeout: 10000 });
+  const started = Date.now();
+  while (Date.now() - started < 5000) {
+    if ((await hill.isChecked()) === on) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  const checked = await hill.isChecked();
+  throw fail(
+    `Adjust for hills was ${checked ? "on" : "off"}, expected ${on ? "on" : "off"}`
+  );
+}
+
+async function setHillAdjust(page, on) {
+  const hill = hillSwitch(page);
+  await hill.waitFor({ timeout: 10000 });
+  if ((await hill.isChecked()) !== on) await hill.click();
+  await waitForHillAdjust(page, on);
+}
+
+async function setClimbCost(page, text) {
+  const cost = page.getByRole("spinbutton", {
+    name: "Climb cost (seconds per metre)",
+  });
+  await cost.click();
+  await cost.fill(text);
+  await cost.press("Tab");
+  const started = Date.now();
+  let value = "";
+  while (Date.now() - started < 5000) {
+    value = await cost.inputValue();
+    if (value === text) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw fail(`climb cost is "${value}", expected ${text}`);
+}
+
+async function songKilometres(page, name) {
+  const row = songRow(page, name);
+  await row.first().waitFor({ timeout: 10000 });
+  const cells = await cellText(row.first());
+  return cells.find((cell) => /^\d+(\.\d+)? - \d+(\.\d+)?$/.test(cell)) || "";
+}
+
+async function waitForKilometres(page, name, expected) {
+  const started = Date.now();
+  let km = "";
+  while (Date.now() - started < 8000) {
+    km = await songKilometres(page, name);
+    if (km === expected) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw fail(`${name} km was "${km}", expected ${expected}`);
+}
+
+async function readSongBand(page) {
+  return page.evaluate(() => {
+    const svg = document.querySelector(".course-viewer svg");
+    const rect = svg && svg.querySelector(".hoveredSongRect");
+    const callout = svg && svg.querySelector(".hoveredCallout");
+    if (!svg || !rect) return null;
+    const width = Number(rect.getAttribute("width"));
+    if (!(width > 1)) return null;
+    const svgBox = svg.getBoundingClientRect();
+    const rectBox = rect.getBoundingClientRect();
+    const plot = svg.querySelector("g");
+    const transform = plot ? plot.getAttribute("transform") || "" : "";
+    const margin = /translate\(\s*([-\d.]+)/.exec(transform);
+    return {
+      svgWidth: svgBox.width,
+      marginLeft: margin ? Number(margin[1]) : null,
+      left: rectBox.left - svgBox.left,
+      right: rectBox.right - svgBox.left,
+      callout: (callout?.textContent || "").replace(/\s+/g, " ").trim(),
+    };
+  });
+}
+
+async function hoveredBand(page, songName) {
+  const started = Date.now();
+  let band = null;
+  while (Date.now() - started < 5000) {
+    band = await readSongBand(page);
+    if (band && band.callout.includes(songName)) return band;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw fail(`${songName} band was ${band ? JSON.stringify(band) : "missing"}`);
+}
+
+async function shootBox(page, locator, filename) {
+  const box = await locator.boundingBox();
+  if (!box) throw fail(`could not frame ${filename}`);
+  await page.screenshot({
+    path: path.join(evidenceDir, filename),
+    clip: {
+      x: Math.max(0, box.x),
+      y: Math.max(0, box.y),
+      width: box.width,
+      height: box.height,
+    },
+  });
+}
+
+async function assertHillDefaultsOnThenOff(page) {
+  await waitForHillAdjust(page, true);
+  await setHillAdjust(page, false);
+  if (
+    await page.getByText(HILL_HINT).count()
+  ) {
+    throw fail("hill hint stayed up after Adjust for hills was turned off");
+  }
+  console.log("hill: Adjust for hills defaulted on, then off");
+}
+
+async function assertClimbBoundary(page) {
+  await page.setViewportSize({ width: 1440, height: 2000 });
+  await setPace(page, "03", "00");
+  await waitForKilometres(page, "Warm Up", "0 - 1");
+  await waitForKilometres(page, "The Climb", "1 - 2.33");
+  await waitForKilometres(page, "Easy Descent", "2.33 - 2.84");
+  await songRow(page, "The Climb").first().hover();
+  const flatBand = await hoveredBand(page, "The Climb");
+  await shootBox(page, page.locator(".course-viewer"), "hill-markers-flat.png");
+
+  await setHillAdjust(page, true);
+  await page.getByText(HILL_HINT).waitFor();
+  await page
+    .getByText(
+      "Default 6 (about Naismith). Raise it if you hike the hills; set 0 for flat timing."
+    )
+    .waitFor();
+  const costValue = await page
+    .getByRole("spinbutton", { name: "Climb cost (seconds per metre)" })
+    .inputValue();
+  if (costValue !== "6") throw fail(`climb cost is "${costValue}", expected 6`);
+  await shootBox(page, page.getByRole("region", { name: "Hills" }), "hill-controls.png");
+
+  await waitForKilometres(page, "Warm Up", "0 - 1");
+  await waitForKilometres(page, "The Climb", "1 - 2.06");
+  await waitForKilometres(page, "Easy Descent", "2.06 - 2.14");
+  await songRow(page, "The Climb").first().hover();
+  const adjustedBand = await hoveredBand(page, "The Climb");
+  await shootBox(page, page.locator(".course-viewer"), "hill-markers-adjusted.png");
+  if (!(adjustedBand.right < flatBand.right - 5)) {
+    throw fail(
+      `The Climb band ended at ${adjustedBand.right.toFixed(1)} px with hills on, flat was ${flatBand.right.toFixed(1)} px`
+    );
+  }
+  console.log(
+    `hill: The Climb km 1 - 2.33 flat, 1 - 2.06 adjusted (band ${flatBand.right.toFixed(1)} px to ${adjustedBand.right.toFixed(1)} px)`
+  );
+}
+
+async function assertClimbCostZero(page) {
+  await setClimbCost(page, "0");
+  await waitForKilometres(page, "The Climb", "1 - 2.33");
+  await waitForKilometres(page, "Easy Descent", "2.33 - 2.84");
+  console.log("hill: climb cost 0 matches flat");
+}
+
+async function assertHillSettingsSurviveReload(page) {
+  await setClimbCost(page, "8");
+  await setHillAdjust(page, true);
+  await page.goto(pageUrl, { waitUntil: "domcontentloaded" });
+  await page.getByText("Fixtures", { exact: true }).waitFor();
+  if (!page.url().includes("fixtures=1")) {
+    throw fail(`fixtures query was lost after hill reload: ${page.url()}`);
+  }
+  await waitForHillAdjust(page, true);
+  await page.getByText(HILL_HINT).waitFor();
+  const restored = page.getByRole("spinbutton", {
+    name: "Climb cost (seconds per metre)",
+  });
+  await restored.waitFor();
+  const started = Date.now();
+  let restoredCost = "";
+  while (Date.now() - started < 5000) {
+    restoredCost = await restored.inputValue();
+    if (restoredCost === "8") break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  if (restoredCost !== "8") {
+    throw fail(`climb cost is "${restoredCost}" after reload, expected 8`);
+  }
+  console.log("hill: toggle and climb cost 8 survived reload");
+}
+
+async function assertAdjustedShortfall(page) {
+  await page.getByRole("row").filter({ hasText: "Fixture Songs" }).click();
+  await songRow(page, "Warm Up").waitFor();
+  await page.getByLabel("Course GPX file").setInputFiles(gpxPath);
+  await page.getByRole("heading", { level: 1, name: /Fixture Climb/ }).waitFor();
+  await setClimbCost(page, "6");
+  await setHillAdjust(page, true);
+  await setPace(page, "05", "00");
+  await page.getByText(SHORT_AT_FIVE_ADJUSTED).waitFor({ timeout: 8000 });
+  console.log("hill: coverage shortfall 27 minutes on the adjusted total");
+}
+
+async function assertNoElevation(page) {
+  await page.getByLabel("Course GPX file").setInputFiles(flatGpxPath);
+  await page.getByRole("heading", { level: 1, name: /Fixture Flat/ }).waitFor();
+  await page.getByText(NO_ELEVATION).waitFor();
+  if (await hillSwitch(page).count()) {
+    throw fail("Adjust for hills was shown on a course with no elevation");
+  }
+  if (
+    await page
+      .getByRole("spinbutton", { name: "Climb cost (seconds per metre)" })
+      .count()
+  ) {
+    throw fail("climb cost was shown on a course with no elevation");
+  }
+  await shootBox(page, page.getByRole("region", { name: "Hills" }), "hill-no-elevation.png");
+  console.log("hill: no elevation message");
+}
+
+async function assertHillTiming(page) {
+  await assertClimbBoundary(page);
+  await assertClimbCostZero(page);
+  await assertHillSettingsSurviveReload(page);
+  await assertAdjustedShortfall(page);
+  await assertNoElevation(page);
+}
+
 async function assertPlaylistCoverage(page) {
   await assertShortfallThenCovered(page);
   await assertChecklistReady(page);
@@ -479,26 +716,7 @@ async function assertSongBand(page, song, distanceKm) {
   const started = Date.now();
   let band = null;
   while (Date.now() - started < 5000) {
-    band = await page.evaluate(() => {
-      const svg = document.querySelector(".course-viewer svg");
-      const rect = svg && svg.querySelector(".hoveredSongRect");
-      const callout = svg && svg.querySelector(".hoveredCallout");
-      if (!svg || !rect) return null;
-      const width = Number(rect.getAttribute("width"));
-      if (!(width > 1)) return null;
-      const svgBox = svg.getBoundingClientRect();
-      const rectBox = rect.getBoundingClientRect();
-      const plot = svg.querySelector("g");
-      const transform = plot ? plot.getAttribute("transform") || "" : "";
-      const margin = /translate\(\s*([-\d.]+)/.exec(transform);
-      return {
-        svgWidth: svgBox.width,
-        marginLeft: margin ? Number(margin[1]) : null,
-        left: rectBox.left - svgBox.left,
-        right: rectBox.right - svgBox.left,
-        callout: (callout?.textContent || "").replace(/\s+/g, " ").trim(),
-      };
-    });
+    band = await readSongBand(page);
     if (band) break;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
@@ -582,6 +800,7 @@ async function drive(external, pageErrors) {
     throw fail(`distance field is "${distanceValue}", expected 4`);
   }
 
+  await assertHillDefaultsOnThenOff(page);
   await setPace(page);
 
   const rendered = [];
@@ -631,6 +850,7 @@ async function drive(external, pageErrors) {
   console.log(`pageUrl: ${page.url()}`);
 
   await assertPlaylistCoverage(page);
+  await assertHillTiming(page);
 
   if (external.length) {
     throw fail(`external requests:\n${external.join("\n")}`);
@@ -653,6 +873,27 @@ async function drive(external, pageErrors) {
     throw error;
   } finally {
     await browser.close();
+  }
+}
+
+function confirmEvidence(failures) {
+  const names = [
+    "song-table.png",
+    "hill-markers-flat.png",
+    "hill-markers-adjusted.png",
+    "hill-controls.png",
+    "hill-no-elevation.png",
+  ];
+  for (const name of names) {
+    const shot = path.join(evidenceDir, name);
+    if (fs.existsSync(shot)) {
+      const size = fs.statSync(shot).size;
+      console.log(
+        `\nevidence: ${path.relative(root, shot)} (${size} bytes, still present after cleanup)`
+      );
+    } else if (failures.length === 0) {
+      failures.push(fail(`${name} is missing after cleanup`));
+    }
   }
 }
 
@@ -718,15 +959,7 @@ async function main() {
     preview = null;
   }
 
-  const shot = path.join(evidenceDir, "song-table.png");
-  if (fs.existsSync(shot)) {
-    const size = fs.statSync(shot).size;
-    console.log(
-      `\nevidence: ${path.relative(root, shot)} (${size} bytes, still present after cleanup)`
-    );
-  } else if (failures.length === 0) {
-    failures.push(fail("evidence screenshot is missing after cleanup"));
-  }
+  confirmEvidence(failures);
 
   if (failures.length) {
     console.error("\nverify-runifly: FAIL");

@@ -107,6 +107,28 @@ describe("shortfallWarning", () => {
     );
   });
 
+  it("describes the fixture songs on a hill-adjusted 4 km course", () => {
+    const withoutFade = playlistCoverage({
+      durationsSeconds: [180, 240, 90.5],
+      runSeconds: 4 * 300 + 150 * 6,
+      crossfadeSeconds: 0,
+    });
+    const withFade = playlistCoverage({
+      durationsSeconds: [180, 240, 90.5],
+      runSeconds: 4 * 300 + 150 * 6,
+      crossfadeSeconds: 12,
+    });
+
+    expect(withoutFade.runSeconds).toBe(2100);
+    expect(shortfallWarning(withoutFade.shortfallSeconds)).toBe(
+      "This playlist is about 26 minutes short of your run. Music will stop early unless you add songs or shorten the course."
+    );
+    expect(withFade.shortfallSeconds).toBe(1613.5);
+    expect(shortfallWarning(withFade.shortfallSeconds)).toBe(
+      "This playlist is about 27 minutes short of your run. Music will stop early unless you add songs or shorten the course."
+    );
+  });
+
   it("describes the fixture songs on a 4 km course at 5:00 per kilometre", () => {
     const result = playlistCoverage({
       durationsSeconds: [180, 240, 90.5],

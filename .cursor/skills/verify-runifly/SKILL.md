@@ -62,7 +62,8 @@ The helper drives one journey that covers the feature map. Selectors below are w
 4. The level-1 heading becomes `Fixture Climb`. The spinbutton named `Distance (km)` reads `4`. The visible label is not wired to the input by itself. The input carries `aria-label="Distance (km)"`.
 5. Set the pace after the GPX load, not before. Loading a course changes the distance, and the pace effect recomputes pace from the existing target time. Click the textbox named `Pace`, choose minute `05` and second `00` in the open `.ant-picker-dropdown`, then press the `.ant-picker-ok` button. The field reads `05:00`.
 6. Read the song table. Each body row's cells must contain the song time, the `KM` text, and the race-time text listed under Pass and fail. Match the cell text, not a screenshot.
-7. With that 4 km course still at `05:00`, the fixture playlist is about 11 minutes short. Set the pace to `02:00` and confirm the shortfall disappears. Tick "Shuffle is off in Spotify", type crossfade `12` (the field stays up after the first digit), leave the field, and confirm the strip reads "Ready for the run". Reload, open the fixture playlist again, and confirm the crossfade field is still `12`. Load the sample course again, set the pace to `05:00`, and confirm the shortfall sentence changes. Song kilometres for the timing oracle are read before this step.
+7. With that 4 km course still at `05:00`, the fixture playlist is about 11 minutes short. Set the pace to `02:00` and confirm the shortfall disappears. Tick "Shuffle is off in Spotify", type crossfade `12` (the field stays up after the first digit), leave the field, and confirm the strip reads "Ready for the run". Reload, open the fixture playlist again, and confirm the crossfade field is still `12`. Load the sample course again, set the pace to `05:00`, and confirm the shortfall sentence changes. Song kilometres for the timing oracle are read before this step. Adjust for hills stays off through this step: Fixture Climb would otherwise turn it on, and the 11 minute sentence is the flat run.
+8. Set the pace to `03:00` and read The Climb. Hills off, the row is `1 - 2.33` and the chart band ends further right. Hills on, at climb cost 6, the row is `1 - 2.06` and the band ends further left, on the climb. Climb cost 0 returns the row to `1 - 2.33`. Set the cost to 8, reload `/?fixtures=1`, and confirm the toggle is still on and the cost is still 8. Load Fixture Climb again, set the cost back to 6 and the pace to `05:00`, and confirm the shortfall is about 27 minutes (crossfade is still 12, so the music is 486.5 seconds against an adjusted run of 2100 seconds). Load `fixtures/fixture-flat.gpx` and confirm the page says the route has no elevation data and the toggle is gone.
 
 The pure function behind that table is `updateTimingData` in `src/data/timing.ts`. Vitest locks the same numbers in `src/data/timing.test.ts`. The browser check locks the strings `formatTimeFromSeconds` actually paints, including `Math.round` on the leftover seconds (`90.5` and `510.5` display as `:31`).
 
@@ -75,6 +76,9 @@ Written under `.cursor/skills/verify-runifly/evidence/` (gitignored):
 - `preview.log` is the Vite preview output.
 - `failure.png` is written only when the browser journey throws.
 - `shortfall.png`, `checklist-incomplete.png`, and `ready.png` are full-page shots of the playlist strip: the 11-minute warning, the checklist while the music covers the run, and "Ready for the run".
+- `hill-markers-flat.png` and `hill-markers-adjusted.png` are the elevation chart with The Climb's band, hills off and on, at pace `03:00`.
+- `hill-controls.png` is the Hills section with Adjust for hills on and the climb cost at 6.
+- `hill-no-elevation.png` is the sentence shown for `fixtures/fixture-flat.gpx`.
 
 A proof is the exit code, the printed song lines, `externalRequests: 0`, a URL still on `127.0.0.1` with `fixtures=1`, and `song-table.png`. The screenshot must show the timed rows. Keep the action (the printed journey) with the resulting state (the file). Do not treat the elevation chart as proof of distance or timing.
 
@@ -98,7 +102,7 @@ The script is the harness. It is executable. There is no separate control binary
 
 Encode today's behaviour. Do not "correct" these oracles in a verification-only change.
 
-Song kilometres and race times (the Vitest expectations and the six strings in the browser output) follow today's `updateTimingData`: cumulative raw duration, `toFixed(2)` on each boundary, kilometres = that rounded boundary / pace. They do not depend on GPX geometry. A timing-fix pull request that changes rounding, the running total, or the meaning of pace must update `src/data/timing.test.ts` and the `songs` table in `scripts/verify.mjs` together. Until that formula changes, those assertions stay.
+Song kilometres and race times (the Vitest expectations and the six strings in the browser output) follow today's flat `updateTimingData`: cumulative raw duration, `toFixed(2)` on each boundary, kilometres = that rounded boundary / pace. The journey turns Adjust for hills off before it reads them. They do not depend on GPX geometry. A timing-fix pull request that changes rounding, the running total, or the meaning of pace must update `src/data/timing.test.ts` and the `songs` table in `scripts/verify.mjs` together. Until that formula changes, those assertions stay. Hill adjustment is a separate check: at `03:00` on Fixture Climb, The Climb moves from `1 - 2.33` to `1 - 2.06` when the toggle is on and the climb cost is 6. That shorter kilometre is the curve in `src/data/hillCurve.ts`. Climb cost 0 matches `1 - 2.33`.
 
 The sample journey does not assert the course geometry below. Vitest covers it.
 
