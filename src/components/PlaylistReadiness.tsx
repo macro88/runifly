@@ -43,6 +43,7 @@ const PlaylistReadiness = () => {
   const { distance, pace } = useCourseContext();
   const [shuffleOff, setShuffleOff] = useState(false);
   const [crossfade, setCrossfade] = useState<number | null>(readStoredCrossfade);
+  const [crossfadeDraft, setCrossfadeDraft] = useState<number | null>(crossfade);
 
   if (!playlistKey || loading || playlistError || songs.length === 0) {
     return null;
@@ -81,8 +82,8 @@ const PlaylistReadiness = () => {
             <Form.Item
               label="Crossfade in Spotify (seconds)"
               extra={CROSSFADE_HINT}
-              help={crossfade === null ? CROSSFADE_EMPTY : undefined}
-              validateStatus={crossfade === null ? "error" : undefined}
+              help={crossfadeDraft === null ? CROSSFADE_EMPTY : undefined}
+              validateStatus={crossfadeDraft === null ? "error" : undefined}
               style={{ marginBottom: 0 }}
             >
               <InputNumber
@@ -91,11 +92,13 @@ const PlaylistReadiness = () => {
                 max={CROSSFADE_MAX_SECONDS}
                 precision={0}
                 step={1}
-                value={crossfade}
+                value={crossfadeDraft}
                 onChange={(value) => {
-                  const next = storedCrossfadeFromInput(value);
-                  writeStoredCrossfade(next);
-                  setCrossfade(next);
+                  setCrossfadeDraft(storedCrossfadeFromInput(value));
+                }}
+                onBlur={() => {
+                  writeStoredCrossfade(crossfadeDraft);
+                  setCrossfade(crossfadeDraft);
                 }}
                 style={{ width: 88 }}
               />

@@ -25,13 +25,14 @@ Preconditions:
 
 - **Read the shortfall.** The strip says the playlist is about 11 minutes short. The helper writes `evidence/shortfall.png`.
 - **Cover the run.** The helper sets the pace to `02:00`. The 11-minute sentence is gone. The strip says timing only holds if shuffle is off and crossfade matches, and it asks for the crossfade. The helper writes `evidence/checklist-incomplete.png`.
-- **Finish the checklist.** Tick `Shuffle is off in Spotify` and enter `0` in `Crossfade in Spotify (seconds)`. The strip reads `Ready for the run`. The helper writes `evidence/ready.png`.
-- **Reload.** The helper opens `/?fixtures=1` again and chooses `Fixture Songs`. The crossfade field is `0`. The shuffle box is clear.
+- **Finish the checklist.** Tick `Shuffle is off in Spotify` and type `12` in `Crossfade in Spotify (seconds)`. The field stays after the first digit. Leaving the field stores the number and the strip reads `Ready for the run`. The helper writes `evidence/ready.png`.
+- **Reload.** The helper opens `/?fixtures=1` again and chooses `Fixture Songs`. The crossfade field is `12`. The shuffle box is clear.
 - **Change the pace.** The helper loads the sample GPX again and sets the pace to `05:00`. The shortfall sentence is still present and its minute count has changed.
 
 ## Gotchas
 
 - Crossfade does not move the song rows. The kilometre and race-time checks stay the ones taken at `05:00`, before this part changes the pace.
-- `0` is a stored crossfade. An empty field is not. After a reload the field must show `0`, not a blank box.
+- A typed crossfade is stored when the field is left, not on the first digit. `12` is a stored crossfade. An empty field is not. After a reload the field must show `12`, not a blank box.
+- At `02:00` per kilometre the fixture songs still cover the run with a 12 second crossfade (486.5 seconds of music against an 8:00 run).
 - The strip is absent until the playlist has tracks. Wait for the crossfade field after choosing the playlist.
 - Song rows are not `role="row"`. The playlist list row `Fixture Songs` is.

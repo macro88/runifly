@@ -369,7 +369,17 @@ async function assertChecklistReady(page) {
   const crossfade = page.getByRole("spinbutton", {
     name: "Crossfade in Spotify (seconds)",
   });
-  await crossfade.fill("0");
+  await crossfade.click();
+  await crossfade.press("1");
+  if (await page.getByText("Ready for the run").count()) {
+    throw fail("checklist collapsed after the first crossfade digit");
+  }
+  await crossfade.press("2");
+  const typed = await crossfade.inputValue();
+  if (typed !== "12") {
+    throw fail(`crossfade field is "${typed}" while typing, expected 12`);
+  }
+  await crossfade.blur();
   await page.getByText("Ready for the run").waitFor({ timeout: 5000 });
   await page.getByText(COVERAGE_INCOMPLETE).waitFor({ state: "hidden", timeout: 5000 });
   await page.getByText("Before you run").waitFor({ state: "hidden", timeout: 5000 });
@@ -380,8 +390,8 @@ async function assertChecklistReady(page) {
   const stored = await page.evaluate(() =>
     window.localStorage.getItem("runifly-spotify-crossfade-seconds")
   );
-  if (stored !== "0") {
-    throw fail(`crossfade storage was ${JSON.stringify(stored)}, expected "0"`);
+  if (stored !== "12") {
+    throw fail(`crossfade storage was ${JSON.stringify(stored)}, expected "12"`);
   }
 }
 
@@ -400,11 +410,11 @@ async function assertCrossfadeSurvivesReload(page) {
   let value = "";
   while (Date.now() - started < 5000) {
     value = await restored.inputValue();
-    if (value === "0") break;
+    if (value === "12") break;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  if (value !== "0") {
-    throw fail(`crossfade field is "${value}" after reload, expected 0`);
+  if (value !== "12") {
+    throw fail(`crossfade field is "${value}" after reload, expected 12`);
   }
   if (
     await page
