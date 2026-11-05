@@ -62,6 +62,7 @@ The helper drives one journey that covers the feature map. Selectors below are w
 4. The level-1 heading becomes `Fixture Climb`. The spinbutton named `Distance (km)` reads `4`. The visible label is not wired to the input by itself. The input carries `aria-label="Distance (km)"`.
 5. Set the pace after the GPX load, not before. Loading a course changes the distance, and the pace effect recomputes pace from the existing target time. Click the textbox named `Pace`, choose minute `05` and second `00` in the open `.ant-picker-dropdown`, then press the `.ant-picker-ok` button. The field reads `05:00`.
 6. Read the song table. Each body row's cells must contain the song time, the `KM` text, and the race-time text listed under Pass and fail. Match the cell text, not a screenshot.
+7. With that 4 km course still at `05:00`, the fixture playlist is about 11 minutes short. Set the pace to `02:00` and confirm the shortfall disappears. Tick "Shuffle is off in Spotify", enter crossfade `0`, and confirm the strip reads "Ready for the run". Reload, open the fixture playlist again, and confirm the crossfade field is still `0`. Load the sample course again, set the pace to `05:00`, and confirm the shortfall sentence changes. Song kilometres for the timing oracle are read before this step.
 
 The pure function behind that table is `updateTimingData` in `src/data/timing.ts`. Vitest locks the same numbers in `src/data/timing.test.ts`. The browser check locks the strings `formatTimeFromSeconds` actually paints, including `Math.round` on the leftover seconds (`90.5` and `510.5` display as `:31`).
 
@@ -73,6 +74,7 @@ Written under `.cursor/skills/verify-runifly/evidence/` (gitignored):
 - `song-table.txt` records the URL, course name, distance, pace, external request count, and each row's cell text.
 - `preview.log` is the Vite preview output.
 - `failure.png` is written only when the browser journey throws.
+- `shortfall.png`, `checklist-incomplete.png`, and `ready.png` are full-page shots of the playlist strip: the 11-minute warning, the checklist while the music covers the run, and "Ready for the run".
 
 A proof is the exit code, the printed song lines, `externalRequests: 0`, a URL still on `127.0.0.1` with `fixtures=1`, and `song-table.png`. The screenshot must show the timed rows. Keep the action (the printed journey) with the resulting state (the file). Do not treat the elevation chart as proof of distance or timing.
 
