@@ -40,7 +40,7 @@ function storedCrossfadeFromInput(value: number | string | null): number | null 
 
 const PlaylistReadiness = () => {
   const { playlistKey, songs, loading, playlistError } = usePlaylistContext();
-  const { distance, pace } = useCourseContext();
+  const { targetTime } = useCourseContext();
   const [shuffleOff, setShuffleOff] = useState(false);
   const [crossfade, setCrossfade] = useState<number | null>(readStoredCrossfade);
   const [crossfadeDraft, setCrossfadeDraft] = useState<number | null>(crossfade);
@@ -49,9 +49,11 @@ const PlaylistReadiness = () => {
     return null;
   }
 
+  // The run is the target on the form. Reset can pin a different pace for the
+  // song rows without changing that target.
   const coverage = playlistCoverage({
     durationsSeconds: songs.map((song) => song.songDuration),
-    runSeconds: pace * distance,
+    runSeconds: targetTime.asSeconds(),
     crossfadeSeconds: crossfade ?? 0,
   });
   const checklistDone = shuffleOff && crossfade !== null;
