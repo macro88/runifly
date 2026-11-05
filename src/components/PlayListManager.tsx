@@ -8,6 +8,7 @@ import { Content } from "antd/es/layout/layout";
 import { useThemeContext } from "../data/ThemeContext";
 import { darkPlaylist, lightPlaylist } from "../utils/placeholders";
 import { usePlaylistContext } from "../data/PlaylistContext";
+import PlaylistReadiness from "./PlaylistReadiness";
 import ResetButton from "./ResetButton";
 import SyncButton from "./SyncButton";
 
@@ -71,6 +72,7 @@ const PlayListManager = () => {
               </Space>
             </Col>
           </Row>
+          <PlaylistReadiness />
           <Row>
             <CourseViewer onFileDrop={() => {}} />
           </Row>

@@ -271,7 +271,8 @@ async function cellText(row) {
   );
 }
 
-async function setPace(page) {
+async function setPace(page, minute = "05", second = "00") {
+  const expected = `${minute}:${second}`;
   const pace = page.getByRole("textbox", { name: "Pace" });
   await pace.click();
   const panel = page.locator(
@@ -286,20 +287,169 @@ async function setPace(page) {
   const minuteColumn = columns.nth(count - 2);
   const secondColumn = columns.nth(count - 1);
   await minuteColumn
-    .locator(".ant-picker-time-panel-cell-inner", { hasText: /^05$/ })
+    .locator(".ant-picker-time-panel-cell-inner", {
+      hasText: new RegExp(`^${minute}$`),
+    })
     .click();
   await secondColumn
-    .locator(".ant-picker-time-panel-cell-inner", { hasText: /^00$/ })
+    .locator(".ant-picker-time-panel-cell-inner", {
+      hasText: new RegExp(`^${second}$`),
+    })
     .click();
   await panel.locator(".ant-picker-ok button").click();
   const started = Date.now();
   let value = "";
   while (Date.now() - started < 5000) {
     value = await pace.inputValue();
-    if (value === "05:00") return;
+    const open = await page
+      .locator(".ant-picker-dropdown:not(.ant-picker-dropdown-hidden)")
+      .count();
+    if (value === expected && open === 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  if (value === expected) {
+    await page.keyboard.press("Escape");
+    await page
+      .locator(".ant-picker-dropdown:not(.ant-picker-dropdown-hidden)")
+      .waitFor({ state: "hidden", timeout: 3000 })
+      .catch(() => {});
+    const after = await pace.inputValue();
+    if (after === expected) return;
+    throw fail(`pace field changed to "${after}" while closing the picker`);
+  }
+  throw fail(`pace field is "${value}", expected ${expected}`);
+}
+
+function coverageShot(name) {
+  return path.join(evidenceDir, name);
+}
+
+async function shortfallLine(page) {
+  const locator = page.getByText(
+    /This playlist is about \d+ minutes? short of your run/
+  );
+  const text = await locator.textContent();
+  return (text || "").replace(/\s+/g, " ").trim();
+}
+
+const SHORT_AT_FIVE =
+  "This playlist is about 11 minutes short of your run. Music will stop early unless you add songs or shorten the course.";
+const COVERAGE_INCOMPLETE =
+  "Timing only holds if shuffle is off and crossfade matches what you enter below.";
+
+async function assertShortfallThenCovered(page) {
+  await page.getByText(SHORT_AT_FIVE).waitFor({ timeout: 5000 });
+  await page.mouse.move(8, 8);
+  await page.screenshot({ path: coverageShot("shortfall.png"), fullPage: true });
+  console.log("coverage: shortfall 11 minutes");
+
+  await setPace(page, "02", "00");
+  await page.getByText(SHORT_AT_FIVE).waitFor({ state: "hidden", timeout: 5000 });
+  await page.getByText(COVERAGE_INCOMPLETE).waitFor({ timeout: 5000 });
+  await page.getByText("Before you run").waitFor();
+  await page.getByText("Shuffle is off in Spotify").waitFor();
+  await page
+    .getByText(
+      "Open Spotify → Settings → Playback → Crossfade. Enter the same number here (0 if crossfade is off)."
+    )
+    .waitFor();
+  await page
+    .getByText("Enter your Spotify crossfade, or 0 if it is off.")
+    .waitFor();
+  await page.mouse.move(8, 8);
+  await page.screenshot({
+    path: coverageShot("checklist-incomplete.png"),
+    fullPage: true,
+  });
+  console.log("coverage: shortfall hidden, checklist incomplete");
+}
+
+async function assertChecklistReady(page) {
+  await page.getByRole("checkbox", { name: "Shuffle is off in Spotify" }).check();
+  const crossfade = page.getByRole("spinbutton", {
+    name: "Crossfade in Spotify (seconds)",
+  });
+  await crossfade.click();
+  await crossfade.press("1");
+  if (await page.getByText("Ready for the run").count()) {
+    throw fail("checklist collapsed after the first crossfade digit");
+  }
+  await crossfade.press("2");
+  const typed = await crossfade.inputValue();
+  if (typed !== "12") {
+    throw fail(`crossfade field is "${typed}" while typing, expected 12`);
+  }
+  await crossfade.blur();
+  await page.getByText("Ready for the run").waitFor({ timeout: 5000 });
+  await page.getByText(COVERAGE_INCOMPLETE).waitFor({ state: "hidden", timeout: 5000 });
+  await page.getByText("Before you run").waitFor({ state: "hidden", timeout: 5000 });
+  await page.mouse.move(8, 8);
+  await page.screenshot({ path: coverageShot("ready.png"), fullPage: true });
+  console.log("coverage: ready");
+
+  const stored = await page.evaluate(() =>
+    window.localStorage.getItem("runifly-spotify-crossfade-seconds")
+  );
+  if (stored !== "12") {
+    throw fail(`crossfade storage was ${JSON.stringify(stored)}, expected "12"`);
+  }
+}
+
+async function assertCrossfadeSurvivesReload(page) {
+  await page.goto(pageUrl, { waitUntil: "domcontentloaded" });
+  await page.getByText("Fixtures", { exact: true }).waitFor();
+  if (!page.url().includes("fixtures=1")) {
+    throw fail(`fixtures query was lost after reload: ${page.url()}`);
+  }
+  await page.getByRole("row").filter({ hasText: "Fixture Songs" }).click();
+  const restored = page.getByRole("spinbutton", {
+    name: "Crossfade in Spotify (seconds)",
+  });
+  await restored.waitFor({ timeout: 10000 });
+  const started = Date.now();
+  let value = "";
+  while (Date.now() - started < 5000) {
+    value = await restored.inputValue();
+    if (value === "12") break;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw fail(`pace field is "${value}", expected 05:00`);
+  if (value !== "12") {
+    throw fail(`crossfade field is "${value}" after reload, expected 12`);
+  }
+  if (
+    await page
+      .getByRole("checkbox", { name: "Shuffle is off in Spotify" })
+      .isChecked()
+  ) {
+    throw fail("shuffle stayed ticked after reload");
+  }
+  console.log("coverage: crossfade persisted");
+}
+
+async function assertShortfallRefreshes(page) {
+  await page.getByLabel("Course GPX file").setInputFiles(gpxPath);
+  await page.getByRole("heading", { level: 1, name: /Fixture Climb/ }).waitFor();
+  const before = await shortfallLine(page);
+  if (!before) throw fail("shortfall missing after reload");
+  await setPace(page, "05", "00");
+  const paceStarted = Date.now();
+  let after = before;
+  while (Date.now() - paceStarted < 5000) {
+    after = await shortfallLine(page);
+    if (after && after !== before) break;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  if (!after || after === before) {
+    throw fail(`shortfall did not refresh (still ${before})`);
+  }
+  console.log(`coverage: warning refreshed from "${before}" to "${after}"`);
+}
+
+async function assertPlaylistCoverage(page) {
+  await assertShortfallThenCovered(page);
+  await assertChecklistReady(page);
+  await assertCrossfadeSurvivesReload(page);
+  await assertShortfallRefreshes(page);
 }
 
 async function waitForSong(page, song) {
@@ -479,6 +629,8 @@ async function drive(external, pageErrors) {
   console.log("pace: 05:00");
   console.log(`externalRequests: ${external.length}`);
   console.log(`pageUrl: ${page.url()}`);
+
+  await assertPlaylistCoverage(page);
 
   if (external.length) {
     throw fail(`external requests:\n${external.join("\n")}`);
