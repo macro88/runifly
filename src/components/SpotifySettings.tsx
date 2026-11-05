@@ -1,10 +1,16 @@
-import { Alert, Button, Card, Checkbox, Space, Typography } from "antd";
+import { Alert, Button, Drawer, Space, Switch, Typography } from "antd";
 import { maskClientId, SPOTIFY_ACCOUNT_APPS_URL } from "../spotify/clientId";
 import { REDIRECT_KEY_WARNING } from "../spotify/pkce";
 import { STAY_SIGNED_IN_NOTE } from "../spotify/tokenStore";
 import { useSpotifyAuth } from "../spotify/auth";
 
-const SpotifySettings = () => {
+const SpotifySettings = ({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) => {
   const {
     clientId,
     sdk,
@@ -21,7 +27,7 @@ const SpotifySettings = () => {
   if (!clientId) return null;
 
   return (
-    <Card title="Spotify settings" style={{ marginTop: 24 }}>
+    <Drawer title="Spotify settings" open={open} onClose={onClose} destroyOnHidden>
       <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         {oauthError ? (
           <Alert type="warning" showIcon title={oauthError} />
@@ -40,12 +46,14 @@ const SpotifySettings = () => {
           <Button onClick={signOut}>Sign out</Button>
         </Space>
         <div>
-          <Checkbox
-            checked={staySignedIn}
-            onChange={(event) => setStaySignedIn(event.target.checked)}
-          >
-            Stay signed in
-          </Checkbox>
+          <Space align="center">
+            <Switch
+              id="stay-signed-in"
+              checked={staySignedIn}
+              onChange={setStaySignedIn}
+            />
+            <label htmlFor="stay-signed-in">Stay signed in</label>
+          </Space>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
             {STAY_SIGNED_IN_NOTE}
           </Typography.Paragraph>
@@ -59,7 +67,7 @@ const SpotifySettings = () => {
           Revoke this app on Spotify
         </Typography.Link>
       </Space>
-    </Card>
+    </Drawer>
   );
 };
 
