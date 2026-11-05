@@ -77,9 +77,7 @@ Two settings live outside this repository. Do both before the first production s
 
 ## Roadmap
 
-- Strava integration: choose a saved route or a previous activity's track as the course input.
-- Water stop indicators on the map/elevation chart.
-- Gel reminders on the map, e.g. every 5 km or every 30 minutes.
+See [ROADMAP.md](ROADMAP.md) for what's planned.
 
 In progress: verification tests, a Spotify client fix, dependency upgrades, timing and distance fixes, and UI work.
 
