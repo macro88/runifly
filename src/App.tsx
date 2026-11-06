@@ -20,10 +20,12 @@ function RunHeading() {
   const loadedPlaylist =
     playlistKey && playlistName?.trim() ? playlistName.trim() : null;
   // The starter course is the brand name on a generated route. A chosen
-  // playlist replaces that until a real GPX is loaded.
-  const courseLabel = courseLoaded || !loadedPlaylist ? name : null;
+  // playlist replaces that until a real GPX is loaded. A blank track name
+  // is not a course title, so the playlist (or the brand) stays visible.
+  const courseLabel =
+    (courseLoaded || !loadedPlaylist ? name : "").trim() || null;
   const runTitle = formatRunTitle(courseLabel, loadedPlaylist);
-  const heading = (courseLabel ?? loadedPlaylist ?? "Runifly").trim() || "Runifly";
+  const heading = courseLabel ?? loadedPlaylist ?? "Runifly";
 
   useEffect(() => {
     document.title = documentTitleForRun(runTitle);

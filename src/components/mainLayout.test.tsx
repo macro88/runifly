@@ -197,6 +197,42 @@ describe("main screen layout", () => {
     expect(document.title).toBe("Fixture Climb - Fixture Songs · Runifly");
   });
 
+  it("keeps the playlist in the header when the GPX has no track name", async () => {
+    await mount("http://127.0.0.1:5173/?fixtures=1");
+    await chooseFixturePlaylist();
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="runifly-fixtures" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <trkseg>
+      <trkpt lat="51.500000000000" lon="-0.120000000000"><ele>30</ele></trkpt>
+      <trkpt lat="51.508993203637" lon="-0.120000000000"><ele>30</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>`;
+    const input = document.querySelector('[aria-label="Course GPX file"]');
+    if (!(input instanceof HTMLInputElement)) throw new Error("missing gpx input");
+    const file = new File([xml], "unnamed.gpx", { type: "application/gpx+xml" });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+    await act(async () => {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await waitFor("unnamed course distance", () => {
+      const distance = document.querySelector('[aria-label="Distance (km)"]');
+      return (
+        distance instanceof HTMLInputElement &&
+        distance.value !== "" &&
+        distance.value !== "42.196"
+      );
+    });
+
+    expect(heading().textContent).toContain("Fixture Songs");
+    expect(heading().textContent).not.toContain("Runifly");
+    expect(header().textContent).not.toContain(" - ");
+  });
+
   it("keeps the playlist warning on one line until it is opened", async () => {
     await mount("http://127.0.0.1:5173/?fixtures=1");
     await chooseFixturePlaylist();
