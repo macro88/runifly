@@ -5,7 +5,7 @@
 
 Runifly is a client-only web app for arranging a Spotify playlist against a route. A runner or hiker loads a GPX file, sets a pace, and connects Spotify. The app times the playlist against the route, so a song can be placed where it will be playing, for example a harder track for a hill.
 
-The interface is React and Ant Design, written in TypeScript and built with Vite. There is no backend. Sign-in uses Spotify's authorisation code flow with PKCE in the browser. Each person creates a Spotify app and pastes its Client ID into the page. The id stays in that browser. The build does not contain one. Access and refresh tokens stay in session storage unless Stay signed in is ticked, which keeps them in local storage.
+The interface is React and Ant Design, written in TypeScript and built with Vite. There is no backend. Sign-in uses Spotify's authorisation code flow with PKCE in the browser. Each person creates a Spotify app and pastes its Client ID into the page. The id stays in that browser. The build does not contain one. Access and refresh tokens stay in session storage unless Stay signed in is turned on, which keeps them in local storage.
 
 Drop a `.gpx` file onto the course panel to load a route. The distance is taken from the track. The page opens on a generated 42.196 km course. Set the distance in kilometres, the pace in minutes per kilometre, or a target time; pace and target time follow each other. After you sign in, the app lists your Spotify playlists. Choosing one places each song on the route from its duration and the pace, and the elevation chart shows the profile. Drag songs into the order you want. The sync control writes that order back to the playlist. A control in the header switches between light and dark mode.
 

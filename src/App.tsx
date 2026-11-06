@@ -5,7 +5,6 @@ import PlayListManager from "./components/PlayListManager";
 import { CourseProvider } from "./data/CourseContext";
 import SpotifyUser from "./components/SpotifyUser";
 import SpotifySetup from "./components/SpotifySetup";
-import SpotifySettings from "./components/SpotifySettings";
 import { PlaylistProvider } from "./data/PlaylistContext";
 import { ThemeProvider } from "./data/ThemeContext";
 import DarkModeToggle from "./components/DarkModeToggle";
@@ -33,7 +32,6 @@ function Shell() {
         </Space>
       </Header>
       <Content style={{ padding: "0 48px" }}>
-        {!fixtures && <SpotifySettings />}
         {ready ? <PlayListManager /> : <SpotifySetup />}
       </Content>
       <Footer>©{new Date().getFullYear()} Created with &hearts;</Footer>
