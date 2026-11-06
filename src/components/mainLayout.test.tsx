@@ -245,6 +245,13 @@ describe("main screen layout", () => {
     expect(heading().textContent).toContain("Fixture Climb");
     expect(header().textContent).toContain("Fixture Climb - Fixture Songs");
     expect(document.title).toBe("Fixture Climb - Fixture Songs · Runifly");
+    expect(heading().style.flex).toBe("1 1 auto");
+    expect(heading().style.minWidth).toBe("0");
+    expect(heading().style.textOverflow).toBe("ellipsis");
+    const suffix = heading().nextElementSibling;
+    expect(suffix?.textContent).toContain("Fixture Songs");
+    expect((suffix as HTMLElement).style.flex).toBe("0 1 auto");
+    expect((suffix as HTMLElement).style.maxWidth).toBe("50%");
   });
 
   it("keeps the playlist in the header when the GPX has no track name", async () => {

@@ -62,7 +62,10 @@ function RunHeading() {
             fontSize: 20,
             lineHeight: "28px",
             fontWeight: 600,
-            flex: "none",
+            flex: "1 1 auto",
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
             whiteSpace: "nowrap",
           }}
         >
@@ -71,12 +74,14 @@ function RunHeading() {
         {headingState.playlistSuffix && (
           <span
             style={{
+              flex: "0 1 auto",
+              maxWidth: "50%",
+              minWidth: 0,
               fontSize: 20,
               lineHeight: "28px",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "pre",
-              minWidth: 0,
             }}
           >
             {` - ${headingState.playlistSuffix}`}
