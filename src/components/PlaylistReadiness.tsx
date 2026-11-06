@@ -54,6 +54,8 @@ const summaryButtonStyle = {
   font: "inherit",
   fontWeight: 600,
   padding: 0,
+  flex: "none",
+  whiteSpace: "nowrap" as const,
   textAlign: "left" as const,
 };
 
@@ -68,7 +70,7 @@ function CrossfadeField({
 }) {
   const missing = draft === null;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flex: "none" }}>
       <span>Crossfade (seconds)</span>
       <InputNumber
         aria-label={CROSSFADE_LABEL}
@@ -149,8 +151,9 @@ function ReadinessBar({
         display: "flex",
         alignItems: "center",
         gap: 16,
-        flexWrap: "wrap",
+        flexWrap: "nowrap",
         width: "100%",
+        minWidth: 0,
       }}
     >
       <button
@@ -166,6 +169,13 @@ function ReadinessBar({
       <Checkbox
         checked={shuffleOff}
         onChange={(event) => onShuffle(event.target.checked)}
+        style={{
+          flex: "1 1 auto",
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
       >
         Shuffle is off in Spotify
       </Checkbox>

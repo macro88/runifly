@@ -309,6 +309,7 @@ describe("main screen layout", () => {
         )
     );
     const summary = buttonMatching(/min short/);
+    expect(summary.parentElement?.style.flexWrap).toBe("nowrap");
     expect(summary.getAttribute("aria-expanded")).toBe("false");
     expect(summary.textContent).toMatch(/~\d+ min short/);
     expect(document.body.textContent).not.toContain(CROSSFADE_HINT);
