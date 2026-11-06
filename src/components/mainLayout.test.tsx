@@ -221,6 +221,18 @@ describe("formatRunTitle", () => {
     expect(unnamed.editable).toBe(true);
     expect(unnamed.editFromIcon).toBe(true);
     expect(unnamed.editText).toBe("");
+
+    const unnamedAlone = describeRunHeading({
+      courseFromFile: true,
+      courseName: "",
+      playlistKey: undefined,
+      playlistName: undefined,
+    });
+    expect(unnamedAlone.runTitle).toBe("Runifly");
+    expect(unnamedAlone.heading).toBe("");
+    expect(unnamedAlone.showBrand).toBe(true);
+    expect(unnamedAlone.editText).toBe("");
+    expect(unnamedAlone.editable).toBe(true);
   });
 });
 
@@ -252,6 +264,16 @@ describe("main screen layout", () => {
     expect(suffix?.textContent).toContain("Fixture Songs");
     expect((suffix as HTMLElement).style.flex).toBe("0 1 auto");
     expect((suffix as HTMLElement).style.maxWidth).toBe("50%");
+  });
+
+  it("shows the brand when an unnamed course is loaded on its own", async () => {
+    await mount("http://127.0.0.1:5173/?fixtures=1");
+    await loadGpx(twoPointGpx(null), "unnamed.gpx");
+
+    expect(document.title).toBe("Runifly");
+    expect(header().textContent).toContain("Runifly");
+    expect(heading().querySelector("button")).toBeInstanceOf(HTMLButtonElement);
+    expect(heading().textContent?.trim()).toBe("");
   });
 
   it("keeps the playlist in the header when the GPX has no track name", async () => {

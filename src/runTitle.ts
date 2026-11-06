@@ -36,10 +36,11 @@ export function describeRunHeading(input: {
     (input.courseFromFile || !playlist ? input.courseName : "").trim() || null;
   const runTitle = formatRunTitle(courseLabel, playlist);
   const editable = input.courseFromFile || courseLabel !== null;
+  const heading = courseLabel ?? (input.courseFromFile ? "" : playlist ?? "Runifly");
   return {
     runTitle,
-    heading: courseLabel ?? (input.courseFromFile ? "" : playlist ?? "Runifly"),
-    showBrand: runTitle !== "Runifly",
+    heading,
+    showBrand: runTitle !== "Runifly" || heading === "",
     playlistSuffix: (courseLabel || input.courseFromFile) && playlist ? playlist : null,
     editable,
     editText: courseLabel ?? "",
