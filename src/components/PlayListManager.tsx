@@ -1,8 +1,7 @@
-import { Alert, Col, Row, Space, Typography, Image, Layout, theme } from "antd";
+import { Alert, Col, Row, Space, Image, Layout, theme } from "antd";
 import HillTiming from "./HillTiming";
 import TargetTimePace from "./TargetTimePace";
 import CourseViewer from "./CourseViewer";
-import { useCourseContext } from "../data/CourseContext";
 import SongList from "./SongList";
 import Playlists from "./Playlists";
 import { Content } from "antd/es/layout/layout";
@@ -14,7 +13,6 @@ import ResetButton from "./ResetButton";
 import SyncButton from "./SyncButton";
 
 const PlayListManager = () => {
-  const { name, setName } = useCourseContext();
   const { playlistKey, playlistImage, playlistError } = usePlaylistContext();
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -48,21 +46,6 @@ const PlayListManager = () => {
                 align="start"
                 style={{ width: "100%" }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <Typography.Title
-                    editable={{ onChange: setName, triggerType: ["text"] }}
-                    level={1}
-                    style={{ margin: 0 }}
-                  >
-                    {name}
-                  </Typography.Title>
-                </div>
                 <TargetTimePace />
                 <HillTiming />
               </Space>

@@ -1,4 +1,6 @@
-import { Form, InputNumber, Space, Switch, Typography } from "antd";
+import { useState } from "react";
+import { InputNumber, Switch, theme, Typography } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { useCourseContext } from "../data/CourseContext";
 import { clampClimbCost } from "../data/hillCurve";
 
@@ -10,6 +12,17 @@ const COST_HINT =
   "Default 6 (about Naismith). Raise it if you hike the hills; set 0 for flat timing.";
 const NO_ELEVATION =
   "This route has no elevation data, so timing stays flat.";
+const NOTES_LABEL = "Hill timing notes";
+
+const noteButtonStyle = {
+  background: "transparent",
+  border: 0,
+  color: "inherit",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  padding: 0,
+};
 
 const HillTiming = () => {
   const {
@@ -19,6 +32,10 @@ const HillTiming = () => {
     setAdjustForHills,
     setClimbCost,
   } = useCourseContext();
+  const [notesOpen, setNotesOpen] = useState(false);
+  const {
+    token: { colorBgElevated, colorText, borderRadius, boxShadowSecondary },
+  } = theme.useToken();
 
   if (courseElevation === "missing") {
     return (
@@ -29,47 +46,78 @@ const HillTiming = () => {
   }
 
   return (
-    <section aria-label="Hills">
-      <Form
-        component="div"
-        colon={false}
-        requiredMark={false}
-        style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}
+    <section aria-label="Hills" style={{ position: "relative" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
       >
-        <Space align="center" wrap>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <Switch
-              aria-label={TOGGLE_LABEL}
-              checked={adjustForHills}
-              onChange={setAdjustForHills}
-            />
-            <span>{TOGGLE_LABEL}</span>
-          </span>
-          {adjustForHills && (
-            <Form.Item label={COST_LABEL} style={{ marginBottom: 0 }}>
-              <InputNumber
-                aria-label={COST_LABEL}
-                min={0}
-                max={20}
-                step={1}
-                precision={0}
-                value={climbCostSecondsPerMetre}
-                onChange={(value) => {
-                  if (value === null) return;
-                  setClimbCost(clampClimbCost(value));
-                }}
-                style={{ width: 88 }}
-              />
-            </Form.Item>
-          )}
-        </Space>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <Switch
+            aria-label={TOGGLE_LABEL}
+            checked={adjustForHills}
+            onChange={(on) => {
+              if (!on) setNotesOpen(false);
+              setAdjustForHills(on);
+            }}
+          />
+          <span>{TOGGLE_LABEL}</span>
+        </span>
         {adjustForHills && (
-          <Space orientation="vertical" size={0}>
-            <Typography.Text type="secondary">{TOGGLE_HINT}</Typography.Text>
-            <Typography.Text type="secondary">{COST_HINT}</Typography.Text>
-          </Space>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <span>{COST_LABEL}</span>
+            <InputNumber
+              aria-label={COST_LABEL}
+              size="small"
+              min={0}
+              max={20}
+              step={1}
+              precision={0}
+              value={climbCostSecondsPerMetre}
+              onChange={(value) => {
+                if (value === null) return;
+                setClimbCost(clampClimbCost(value));
+              }}
+              style={{ width: 72 }}
+            />
+          </span>
         )}
-      </Form>
+        {adjustForHills && (
+          <button
+            type="button"
+            aria-label={NOTES_LABEL}
+            aria-expanded={notesOpen}
+            onClick={() => setNotesOpen((open) => !open)}
+            style={noteButtonStyle}
+          >
+            <InfoCircleOutlined />
+          </button>
+        )}
+      </div>
+      {adjustForHills && notesOpen && (
+        <div
+          role="note"
+          style={{
+            position: "absolute",
+            zIndex: 5,
+            top: "100%",
+            left: 0,
+            marginTop: 4,
+            maxWidth: 480,
+            padding: "8px 12px",
+            background: colorBgElevated,
+            color: colorText,
+            borderRadius,
+            boxShadow: boxShadowSecondary,
+          }}
+        >
+          <div>{TOGGLE_HINT}</div>
+          <div>{COST_HINT}</div>
+        </div>
+      )}
     </section>
   );
 };

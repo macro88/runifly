@@ -325,7 +325,36 @@ function coverageShot(name) {
   return path.join(evidenceDir, name);
 }
 
+const CHECKLIST_SUMMARY = "Confirm shuffle and crossfade";
+const CROSSFADE_HINT =
+  "Open Spotify → Settings → Playback → Crossfade. Enter the same number here (0 if crossfade is off).";
+const CROSSFADE_EMPTY = "Enter your Spotify crossfade, or 0 if it is off.";
+
+function playlistDetails(page) {
+  return page.getByRole("button", {
+    name: /min short|Confirm shuffle and crossfade/,
+  });
+}
+
+async function openPlaylistDetails(page) {
+  const toggle = playlistDetails(page);
+  await toggle.waitFor();
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+    await toggle.click();
+  }
+  await page.getByText("Before you run").waitFor();
+}
+
+async function closePlaylistDetails(page) {
+  const toggle = playlistDetails(page);
+  if ((await toggle.getAttribute("aria-expanded")) === "true") {
+    await toggle.click();
+  }
+  await page.getByText("Before you run").waitFor({ state: "hidden" });
+}
+
 async function shortfallLine(page) {
+  await openPlaylistDetails(page);
   const locator = page.getByText(
     /This playlist is about \d+ minutes? short of your run/
   );
@@ -345,24 +374,40 @@ const NO_ELEVATION =
   "This route has no elevation data, so timing stays flat.";
 
 async function assertShortfallThenCovered(page) {
+  const summary = page.getByRole("button", { name: /~11 min short/ });
+  await summary.waitFor({ timeout: 5000 });
+  if (await page.getByText(SHORT_AT_FIVE).isVisible()) {
+    throw fail("playlist warning was expanded by default");
+  }
+  const crossfade = page.getByRole("spinbutton", {
+    name: "Crossfade in Spotify (seconds)",
+  });
+  await crossfade.waitFor();
+  if ((await crossfade.getAttribute("aria-invalid")) !== "true") {
+    throw fail("crossfade was not marked required while collapsed and empty");
+  }
+  await page.getByText("Required", { exact: true }).waitFor();
+  await openPlaylistDetails(page);
   await page.getByText(SHORT_AT_FIVE).waitFor({ timeout: 5000 });
+  await page.getByText("Before you run").waitFor();
+  await page.getByText("Shuffle is off in Spotify").waitFor();
+  await page.getByText(CROSSFADE_HINT).waitFor();
+  await page.getByText(CROSSFADE_EMPTY).waitFor();
+  await closePlaylistDetails(page);
   await page.mouse.move(8, 8);
   await page.screenshot({ path: coverageShot("shortfall.png"), fullPage: true });
   console.log("coverage: shortfall 11 minutes");
 
   await setPace(page, "02", "00");
   await page.getByText(SHORT_AT_FIVE).waitFor({ state: "hidden", timeout: 5000 });
+  await page.getByRole("button", { name: CHECKLIST_SUMMARY }).waitFor();
+  await openPlaylistDetails(page);
   await page.getByText(COVERAGE_INCOMPLETE).waitFor({ timeout: 5000 });
   await page.getByText("Before you run").waitFor();
+  await page.getByText(CROSSFADE_HINT).waitFor();
+  await page.getByText(CROSSFADE_EMPTY).waitFor();
+  await closePlaylistDetails(page);
   await page.getByText("Shuffle is off in Spotify").waitFor();
-  await page
-    .getByText(
-      "Open Spotify → Settings → Playback → Crossfade. Enter the same number here (0 if crossfade is off)."
-    )
-    .waitFor();
-  await page
-    .getByText("Enter your Spotify crossfade, or 0 if it is off.")
-    .waitFor();
   await page.mouse.move(8, 8);
   await page.screenshot({
     path: coverageShot("checklist-incomplete.png"),
@@ -560,8 +605,42 @@ async function shootBox(page, locator, filename) {
   });
 }
 
+async function openHillNotes(page) {
+  const notes = page.getByRole("button", { name: "Hill timing notes" });
+  await notes.waitFor();
+  if (!(await page.getByText(HILL_HINT).isVisible())) {
+    await notes.click();
+  }
+  await page.getByText(HILL_HINT).waitFor();
+}
+
+async function closeHillNotes(page) {
+  if (!(await page.getByText(HILL_HINT).isVisible())) return;
+  await page.getByRole("button", { name: "Hill timing notes" }).click();
+  await page.getByText(HILL_HINT).waitFor({ state: "hidden" });
+}
+
+async function assertHillsRowStaysShort(page) {
+  const hills = page.getByRole("region", { name: "Hills" });
+  const offBox = await hills.boundingBox();
+  await setHillAdjust(page, true);
+  const onBox = await hills.boundingBox();
+  if (!offBox || !onBox) throw fail("could not measure the hills row");
+  if (onBox.height > offBox.height + 8) {
+    throw fail(
+      `hills row grew from ${offBox.height.toFixed(1)}px to ${onBox.height.toFixed(1)}px`
+    );
+  }
+  console.log(
+    `hill: row stayed ${offBox.height.toFixed(1)}px off to ${onBox.height.toFixed(1)}px on`
+  );
+}
+
 async function assertHillDefaultsOnThenOff(page) {
   await waitForHillAdjust(page, true);
+  if (await page.getByText(HILL_HINT).count()) {
+    throw fail("hill notes were in the page before they were opened");
+  }
   await setHillAdjust(page, false);
   if (
     await page.getByText(HILL_HINT).count()
@@ -581,13 +660,14 @@ async function assertClimbBoundary(page) {
   const flatBand = await hoveredBand(page, "The Climb");
   await shootBox(page, page.locator(".course-viewer"), "hill-markers-flat.png");
 
-  await setHillAdjust(page, true);
-  await page.getByText(HILL_HINT).waitFor();
+  await assertHillsRowStaysShort(page);
+  await openHillNotes(page);
   await page
     .getByText(
       "Default 6 (about Naismith). Raise it if you hike the hills; set 0 for flat timing."
     )
     .waitFor();
+  await closeHillNotes(page);
   const costValue = await page
     .getByRole("spinbutton", { name: "Climb cost (seconds per metre)" })
     .inputValue();
@@ -626,7 +706,8 @@ async function assertHillSettingsSurviveReload(page) {
     throw fail(`fixtures query was lost after hill reload: ${page.url()}`);
   }
   await waitForHillAdjust(page, true);
-  await page.getByText(HILL_HINT).waitFor();
+  await openHillNotes(page);
+  await closeHillNotes(page);
   const restored = page.getByRole("spinbutton", {
     name: "Climb cost (seconds per metre)",
   });
@@ -652,6 +733,7 @@ async function assertAdjustedShortfall(page) {
   await setClimbCost(page, "6");
   await setHillAdjust(page, true);
   await setPace(page, "05", "00");
+  await openPlaylistDetails(page);
   await page.getByText(SHORT_AT_FIVE_ADJUSTED).waitFor({ timeout: 8000 });
   console.log("hill: coverage shortfall 27 minutes on the adjusted total");
 }

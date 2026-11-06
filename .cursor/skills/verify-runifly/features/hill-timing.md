@@ -14,7 +14,7 @@ Adjust for hills walks the course and adds time on the climbs, so a song that fl
 ## How to get to it (user POV)
 
 - Load a GPX that contains elevation. The Hills controls sit under the pace.
-- Turn Adjust for hills on and edit Climb cost (seconds per metre). The song table and the hovered chart band follow the new kilometres.
+- Turn Adjust for hills on. The climb cost stays on that same row. The hint and the climb-cost note open from Hill timing notes, so the row does not grow into a text block. The song table and the hovered chart band follow the new kilometres.
 - A file with no elevation data replaces the controls with one sentence.
 
 ## Driving it with verify-runifly
@@ -25,7 +25,7 @@ Preconditions:
 - `yarn verify` continues straight into this part. Do not start a second preview.
 
 - **Read the flat boundary.** The helper sets the pace to `03:00`. Warm Up is `0 - 1`, The Climb is `1 - 2.33`, and Easy Descent is `2.33 - 2.84`. It hovers The Climb and writes `evidence/hill-markers-flat.png`.
-- **Turn hills on.** The hint under the toggle and the climb-cost hint are visible, and the cost is 6. The helper writes `evidence/hill-controls.png`. The Climb becomes `1 - 2.06` and Easy Descent becomes `2.06 - 2.14`. Warm Up stays `0 - 1`. The chart band's right edge is further left. The helper writes `evidence/hill-markers-adjusted.png`.
+- **Turn hills on.** The hills row stays within 8px of its height with the toggle off. The helper opens Hill timing notes, reads the hint and the climb-cost note, closes them, and checks the cost is 6. It writes `evidence/hill-controls.png` of that compact row. The Climb becomes `1 - 2.06` and Easy Descent becomes `2.06 - 2.14`. Warm Up stays `0 - 1`. The chart band's right edge is further left. The helper writes `evidence/hill-markers-adjusted.png`.
 - **Set the cost to 0.** The Climb returns to `1 - 2.33` and Easy Descent to `2.33 - 2.84`.
 - **Reload.** The helper sets the cost to 8, opens `/?fixtures=1` again, and reads the toggle still on and the cost still 8.
 - **Read the adjusted shortfall.** The helper opens Fixture Songs, loads Fixture Climb, sets the cost to 6 and the pace to `05:00`. The strip says the playlist is about 27 minutes short. That is 486.5 seconds of music, after a 12 second crossfade on two gaps, against 2100 seconds (4 km at 5:00 plus 150 m at 6 seconds per metre).
