@@ -11,25 +11,21 @@ import { ThemeProvider } from "./data/ThemeContext";
 import DarkModeToggle from "./components/DarkModeToggle";
 import { SpotifyAuthProvider, useSpotifyAuth } from "./spotify/auth";
 import { isFixturesMode } from "./fixtures/playlist";
-import { documentTitleForRun, formatRunTitle } from "./runTitle";
+import { describeRunHeading, documentTitleForRun } from "./runTitle";
 
 function RunHeading() {
-  const { name, setName, gpx } = useCourseContext();
+  const { name, setName, courseFromFile } = useCourseContext();
   const { playlistKey, playlistName } = usePlaylistContext();
-  const courseLoaded = gpx.name !== "fake";
-  const loadedPlaylist =
-    playlistKey && playlistName?.trim() ? playlistName.trim() : null;
-  // The starter course is the brand name on a generated route. A chosen
-  // playlist replaces that until a real GPX is loaded. A blank track name
-  // is not a course title, so the playlist (or the brand) stays visible.
-  const courseLabel =
-    (courseLoaded || !loadedPlaylist ? name : "").trim() || null;
-  const runTitle = formatRunTitle(courseLabel, loadedPlaylist);
-  const heading = courseLabel ?? loadedPlaylist ?? "Runifly";
+  const headingState = describeRunHeading({
+    courseFromFile,
+    courseName: name,
+    playlistKey,
+    playlistName,
+  });
 
   useEffect(() => {
-    document.title = documentTitleForRun(runTitle);
-  }, [runTitle]);
+    document.title = documentTitleForRun(headingState.runTitle);
+  }, [headingState.runTitle]);
 
   return (
     <div
@@ -41,7 +37,7 @@ function RunHeading() {
         flex: 1,
       }}
     >
-      {runTitle !== "Runifly" && <span style={{ flex: "none" }}>Runifly</span>}
+      {headingState.showBrand && <span style={{ flex: "none" }}>Runifly</span>}
       <div
         style={{
           display: "flex",
@@ -53,8 +49,12 @@ function RunHeading() {
         <Typography.Title
           level={1}
           editable={
-            courseLabel !== null
-              ? { onChange: setName, triggerType: ["text"] }
+            headingState.editable
+              ? {
+                  onChange: setName,
+                  text: headingState.editText,
+                  triggerType: headingState.editFromIcon ? ["icon"] : ["text"],
+                }
               : false
           }
           style={{
@@ -66,9 +66,9 @@ function RunHeading() {
             whiteSpace: "nowrap",
           }}
         >
-          {heading}
+          {headingState.heading}
         </Typography.Title>
-        {courseLabel && loadedPlaylist && (
+        {headingState.playlistSuffix && (
           <span
             style={{
               fontSize: 20,
@@ -79,7 +79,7 @@ function RunHeading() {
               minWidth: 0,
             }}
           >
-            {` - ${loadedPlaylist}`}
+            {` - ${headingState.playlistSuffix}`}
           </span>
         )}
       </div>

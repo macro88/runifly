@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import fs from "node:fs";
 import path from "node:path";
-import { documentTitleForRun, formatRunTitle } from "../runTitle";
+import { describeRunHeading, documentTitleForRun, formatRunTitle } from "../runTitle";
 
 const HILL_HINT =
   "Climbs add time, so later songs stay on the map. Descents keep your flat pace.";
@@ -136,22 +136,46 @@ async function chooseFixturePlaylist() {
   );
 }
 
-async function loadFixtureClimb() {
-  const xml = fs.readFileSync(
-    path.resolve("fixtures/fixture-climb.gpx"),
-    "utf8"
-  );
+function twoPointGpx(name: string | null): string {
+  const nameElement = name === null ? "" : `<name>${name}</name>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="runifly-fixtures" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    ${nameElement}
+    <trkseg>
+      <trkpt lat="51.500000000000" lon="-0.120000000000"><ele>30</ele></trkpt>
+      <trkpt lat="51.508993203637" lon="-0.120000000000"><ele>30</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>`;
+}
+
+async function loadGpx(xml: string, filename: string) {
   const input = document.querySelector('[aria-label="Course GPX file"]');
   if (!(input instanceof HTMLInputElement)) throw new Error("missing gpx input");
-  const file = new File([xml], "fixture-climb.gpx", {
-    type: "application/gpx+xml",
-  });
+  const file = new File([xml], filename, { type: "application/gpx+xml" });
   const transfer = new DataTransfer();
   transfer.items.add(file);
   input.files = transfer.files;
   await act(async () => {
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
+  await waitFor("loaded course distance", () => {
+    const distance = document.querySelector('[aria-label="Distance (km)"]');
+    return (
+      distance instanceof HTMLInputElement &&
+      distance.value !== "" &&
+      distance.value !== "42.196"
+    );
+  });
+}
+
+async function loadFixtureClimb() {
+  const xml = fs.readFileSync(
+    path.resolve("fixtures/fixture-climb.gpx"),
+    "utf8"
+  );
+  await loadGpx(xml, "fixture-climb.gpx");
   await waitFor(
     "course heading",
     () => heading().textContent?.includes("Fixture Climb") ?? false
@@ -171,6 +195,32 @@ describe("formatRunTitle", () => {
     expect(documentTitleForRun("Shanghai Marathon - Mara Run Playlist")).toBe(
       "Shanghai Marathon - Mara Run Playlist · Runifly"
     );
+  });
+
+  it("keeps a loaded course that is named fake, and a blank name editable", () => {
+    const namedFake = describeRunHeading({
+      courseFromFile: true,
+      courseName: "fake",
+      playlistKey: "playlist",
+      playlistName: "Mara Run Playlist",
+    });
+    expect(namedFake.runTitle).toBe("fake - Mara Run Playlist");
+    expect(namedFake.heading).toBe("fake");
+    expect(namedFake.playlistSuffix).toBe("Mara Run Playlist");
+    expect(namedFake.editable).toBe(true);
+
+    const unnamed = describeRunHeading({
+      courseFromFile: true,
+      courseName: "  ",
+      playlistKey: "playlist",
+      playlistName: "Mara Run Playlist",
+    });
+    expect(unnamed.runTitle).toBe("Mara Run Playlist");
+    expect(unnamed.heading).toBe("");
+    expect(unnamed.playlistSuffix).toBe("Mara Run Playlist");
+    expect(unnamed.editable).toBe(true);
+    expect(unnamed.editFromIcon).toBe(true);
+    expect(unnamed.editText).toBe("");
   });
 });
 
@@ -201,36 +251,21 @@ describe("main screen layout", () => {
     await mount("http://127.0.0.1:5173/?fixtures=1");
     await chooseFixturePlaylist();
 
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="runifly-fixtures" xmlns="http://www.topografix.com/GPX/1/1">
-  <trk>
-    <trkseg>
-      <trkpt lat="51.500000000000" lon="-0.120000000000"><ele>30</ele></trkpt>
-      <trkpt lat="51.508993203637" lon="-0.120000000000"><ele>30</ele></trkpt>
-    </trkseg>
-  </trk>
-</gpx>`;
-    const input = document.querySelector('[aria-label="Course GPX file"]');
-    if (!(input instanceof HTMLInputElement)) throw new Error("missing gpx input");
-    const file = new File([xml], "unnamed.gpx", { type: "application/gpx+xml" });
-    const transfer = new DataTransfer();
-    transfer.items.add(file);
-    input.files = transfer.files;
-    await act(async () => {
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    await waitFor("unnamed course distance", () => {
-      const distance = document.querySelector('[aria-label="Distance (km)"]');
-      return (
-        distance instanceof HTMLInputElement &&
-        distance.value !== "" &&
-        distance.value !== "42.196"
-      );
-    });
+    await loadGpx(twoPointGpx(null), "unnamed.gpx");
 
-    expect(heading().textContent).toContain("Fixture Songs");
-    expect(heading().textContent).not.toContain("Runifly");
-    expect(header().textContent).not.toContain(" - ");
+    expect(header().textContent).toContain("Fixture Songs");
+    expect(document.title).toBe("Fixture Songs · Runifly");
+    expect(heading().querySelector("button")).toBeInstanceOf(HTMLButtonElement);
+  });
+
+  it("treats a GPX named fake as a loaded course", async () => {
+    await mount("http://127.0.0.1:5173/?fixtures=1");
+    await chooseFixturePlaylist();
+    await loadGpx(twoPointGpx("fake"), "fake-name.gpx");
+
+    expect(heading().textContent).toContain("fake");
+    expect(header().textContent).toContain("fake - Fixture Songs");
+    expect(document.title).toBe("fake - Fixture Songs · Runifly");
   });
 
   it("keeps the playlist warning on one line until it is opened", async () => {

@@ -12,3 +12,37 @@ export function formatRunTitle(
 export function documentTitleForRun(runTitle: string): string {
   return runTitle === "Runifly" ? "Runifly" : `${runTitle} · Runifly`;
 }
+
+export type RunHeadingState = {
+  runTitle: string;
+  heading: string;
+  showBrand: boolean;
+  playlistSuffix: string | null;
+  editable: boolean;
+  editText: string;
+  editFromIcon: boolean;
+};
+
+/** What the header shows. A generated route is not a loaded course. */
+export function describeRunHeading(input: {
+  courseFromFile: boolean;
+  courseName: string;
+  playlistKey: string | undefined;
+  playlistName: string | undefined;
+}): RunHeadingState {
+  const playlist =
+    input.playlistKey && input.playlistName?.trim() ? input.playlistName.trim() : null;
+  const courseLabel =
+    (input.courseFromFile || !playlist ? input.courseName : "").trim() || null;
+  const runTitle = formatRunTitle(courseLabel, playlist);
+  const editable = input.courseFromFile || courseLabel !== null;
+  return {
+    runTitle,
+    heading: courseLabel ?? (input.courseFromFile ? "" : playlist ?? "Runifly"),
+    showBrand: runTitle !== "Runifly",
+    playlistSuffix: (courseLabel || input.courseFromFile) && playlist ? playlist : null,
+    editable,
+    editText: courseLabel ?? "",
+    editFromIcon: editable && courseLabel === null,
+  };
+}
