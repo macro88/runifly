@@ -43,3 +43,8 @@ export function shortfallWarning(shortfallSeconds: number): string {
   const unit = minutes === 1 ? "minute" : "minutes";
   return `This playlist is about ${minutes} ${unit} short of your run. Music will stop early unless you add songs or shorten the course.`;
 }
+
+/** One-line fact for the collapsed playlist warning. */
+export function shortfallSummary(shortfallSeconds: number): string {
+  return `~${shortfallMinuteCount(shortfallSeconds)} min short`;
+}

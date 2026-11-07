@@ -13,6 +13,7 @@ Once a playlist is on the course, the strip above the chart warns when the songs
 ## How to get to it (user POV)
 
 - Select a playlist, load a course, and set a pace. The strip sits above the elevation chart.
+- The strip is one line: the shortfall (`~11 min short`), the shuffle tick, and the crossfade field. The field stays on that line when the line is collapsed, and an empty field is marked required. The full sentence and the Spotify crossfade steps open from the shortfall.
 - The fixture songs last 510.5 seconds. On the 4 km sample at 5:00 per kilometre the run is 20:00, so the playlist is about 11 minutes short.
 - At 2:00 per kilometre the same course is 8:00, which those songs cover.
 
@@ -23,8 +24,8 @@ Preconditions:
 - The song-timing checks have already passed at pace `05:00` on `Fixture Climb`.
 - `yarn verify` continues straight into this part. Do not start a second preview.
 
-- **Read the shortfall.** The strip says the playlist is about 11 minutes short. The helper writes `evidence/shortfall.png`.
-- **Cover the run.** The helper sets the pace to `02:00`. The 11-minute sentence is gone. The strip says timing only holds if shuffle is off and crossfade matches, and it asks for the crossfade. The helper writes `evidence/checklist-incomplete.png`.
+- **Read the shortfall.** The collapsed line reads `~11 min short`. The crossfade field is still there and marked required. The helper opens the line, reads the 11-minute sentence and the crossfade steps, closes it, and writes `evidence/shortfall.png`.
+- **Cover the run.** The helper sets the pace to `02:00`. The 11-minute sentence is gone. The line reads `Confirm shuffle and crossfade`. Opening it shows that timing only holds if shuffle is off and crossfade matches. The helper writes `evidence/checklist-incomplete.png` with the line closed.
 - **Finish the checklist.** Tick `Shuffle is off in Spotify` and type `12` in `Crossfade in Spotify (seconds)`. The field stays after the first digit. Leaving the field stores the number and the strip reads `Ready for the run`. The helper writes `evidence/ready.png`.
 - **Reload.** The helper opens `/?fixtures=1` again and chooses `Fixture Songs`. The crossfade field is `12`. The shuffle box is clear.
 - **Change the pace.** The helper loads the sample GPX again and sets the pace to `05:00`. The shortfall sentence is still present and its minute count has changed.

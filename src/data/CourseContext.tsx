@@ -33,6 +33,7 @@ interface CourseContextType {
   targetTime: RaceDuration;
   name: string;
   gpx: Gpx;
+  courseFromFile: boolean;
   courseElevation: CourseElevation;
   adjustForHills: boolean;
   climbCostSecondsPerMetre: number;
@@ -145,6 +146,7 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
       targetTime,
       name,
       gpx,
+      courseFromFile: gpx !== defaultValues.gpx,
       courseElevation,
       adjustForHills,
       climbCostSecondsPerMetre,

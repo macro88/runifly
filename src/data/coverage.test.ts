@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   playlistCoverage,
   shortfallMinuteCount,
+  shortfallSummary,
   shortfallWarning,
 } from "./coverage";
 
@@ -105,6 +106,8 @@ describe("shortfallWarning", () => {
     expect(shortfallWarning(90)).toBe(
       "This playlist is about 2 minutes short of your run. Music will stop early unless you add songs or shorten the course."
     );
+    expect(shortfallSummary(60)).toBe("~1 min short");
+    expect(shortfallSummary(90)).toBe("~2 min short");
   });
 
   it("describes the fixture songs on a hill-adjusted 4 km course", () => {

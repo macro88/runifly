@@ -5,7 +5,7 @@ Loading a GPX replaces the generated course with the file's name and distance. T
 ## Sub-features
 
 - `course-file` reads a `.gpx` file from the file input and parses it.
-- `course-name` shows the track name as the level-1 heading.
+- `course-name` shows the track name as the level-1 heading in the header. With a playlist loaded, the header reads `track - playlist`.
 - `course-distance` shows the parsed length in the distance field, in kilometres to two decimal places.
 
 ## How to get to it (user POV)
