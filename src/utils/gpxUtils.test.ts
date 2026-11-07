@@ -267,10 +267,10 @@ describe("createFakeGpx", () => {
   it("builds a course shorter than one kilometre", () => {
     const course = createFakeGpx("short", 0.25, 5);
 
-    expect(course.points).toHaveLength(1);
+    expect(course.points.map((point) => point.totalDistance)).toEqual([0, 250]);
     expect(totalDistance(course)).toBe(250);
     expect(course.laps.map((lap) => lap.totalDistance)).toEqual([250]);
-    expect(course.points[0].time).toBe(1.25);
+    expect(course.points[course.points.length - 1].time).toBe(1.25);
   });
 
   it("keeps the marathon fraction as 196 m", () => {
@@ -286,7 +286,9 @@ describe("createFakeGpx", () => {
   it("leaves a whole number of kilometres on the kilometre", () => {
     const course = createFakeGpx("whole", 4, 5);
 
-    expect(course.points).toHaveLength(4);
+    expect(course.points.map((point) => point.totalDistance)).toEqual([
+      0, 1000, 2000, 3000, 4000,
+    ]);
     expect(totalDistance(course)).toBe(4000);
     expect(course.laps.map((lap) => lap.totalDistance)).toEqual([
       1000, 1000, 1000, 1000,

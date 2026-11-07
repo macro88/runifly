@@ -16,7 +16,7 @@ describe("elevation chart geometry", () => {
     expect(routeKilometres).toBe(1.6);
     expect(course.laps.map((lap) => lap.totalDistance)).toEqual([1000, 600]);
     expect(elevationSamples(course.points).map((sample) => sample.kilometre)).toEqual([
-      1, 1.6,
+      0, 1, 1.6,
     ]);
 
     expect(kilometreX(0, routeKilometres, width)).toBe(0);
@@ -34,5 +34,30 @@ describe("elevation chart geometry", () => {
     expect(wholeKilometreTicks(1.6)).toEqual([0, 1]);
     expect(wholeKilometreTicks(4)).toEqual([0, 1, 2, 3, 4]);
     expect(wholeKilometreTicks(0.6)).toEqual([0]);
+  });
+
+  it("plots the generated 42.196 km course from 0 through the final 196 m", () => {
+    const course = createFakeGpx("fake", 42.196, 5);
+    const series = elevationSamples(course.points);
+    const kilometres = series.map((sample) => sample.kilometre);
+    const wholeKilometres = kilometres.filter((kilometre) =>
+      Number.isInteger(kilometre)
+    );
+
+    expect(course.points[0].totalDistance).toBe(0);
+    expect(series[0]).toEqual({
+      kilometre: 0,
+      elevation: course.points[0].elevation,
+    });
+    expect(series[1]?.kilometre).toBe(1);
+    expect(wholeKilometres).toEqual(
+      Array.from({ length: 43 }, (_, kilometre) => kilometre)
+    );
+
+    const end = series[series.length - 1];
+    expect(end.kilometre).toBeCloseTo(42.196, 5);
+    expect(end.elevation).toBe(course.points[course.points.length - 1].elevation);
+    expect(courseKilometres(course.points)).toBeCloseTo(42.196, 5);
+    expect(kilometres[kilometres.indexOf(42) + 1]).toBeCloseTo(42.196, 5);
   });
 });
