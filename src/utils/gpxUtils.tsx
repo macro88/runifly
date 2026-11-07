@@ -115,27 +115,22 @@ export function createFakeGpx(
   const amplitude = 10; // The height of the wave
   const frequency = 0.01; // The frequency of the wave
 
-  const points: PointDetail[] = Array.from(
-    { length: wholeKilometres },
-    (_, idx) => {
-      const i = idx + 1;
-      return {
-        longitude: i,
-        latitude: i,
-        elevation:
-          amplitude * Math.sin(frequency * i) + (Math.random() * 20 - 10) + 50,
-        distance: 1000,
-        totalDistance: i * 1000,
-        elevationGain: 0,
-        elevationLoss: 0,
-        time: i * pace,
-      };
-    }
-  );
+  // One sample on kilometre 0 and on each whole kilometre, then any remainder.
+  const points: PointDetail[] = Array.from({ length: wholeKilometres + 1 }, (_, i) => ({
+    longitude: i,
+    latitude: i,
+    elevation:
+      amplitude * Math.sin(frequency * i) + (Math.random() * 20 - 10) + 50,
+    distance: i === 0 ? 0 : 1000,
+    totalDistance: i * 1000,
+    elevationGain: 0,
+    elevationLoss: 0,
+    time: i * pace,
+  }));
 
   if (fractionMeters > 0) {
     const totalMeters = wholeKilometres * 1000 + fractionMeters;
-    const i = points.length + 1;
+    const i = wholeKilometres + 1;
     points.push({
       longitude: i,
       latitude: i,
